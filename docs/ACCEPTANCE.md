@@ -24,4 +24,4 @@ Private runtime receipts contain exact native IDs and workstation paths and are 
 
 Computer-use browser surfaces were unavailable in this session (`iab` unavailable; inventory empty). API checks and successful frontend compilation are not described as browser interaction or screenshots.
 
-Final source verification: 50 application tests and 24 targeted Studio lease, scoped Finish, camera recovery and teleoperation tests passed. Explorer’s 23 adapter/readiness/fake-writer tests passed against its deployed patch. These are software regressions, not attended physical demonstrations. The frontend production build and owned-source size/control-flow checks passed.
+Final source verification: 51 application tests and 24 targeted Studio lease, scoped Finish, camera recovery and teleoperation tests passed. Explorer’s 23 adapter/readiness/fake-writer tests passed against its deployed patch. These are software regressions, not attended physical demonstrations. The frontend production build and owned-source size/control-flow checks passed.

@@ -133,6 +133,10 @@ async def monitor_events():
         if store.state("active_session",False):
             if status["state"] != "Ready":
                 events.emit("camera_missing","The overview camera is unavailable. Visual guidance is suspended.",1)
+            else:
+                events.resolve('camera_missing')
+            if not status['scene'].get('quality',{}).get('dark'):
+                events.resolve('dark_view')
             if previous is not None and revision!=previous:
                 from .memory_context import invalidate_device
                 invalidate_device(store,config['camera_id'],'Camera viewpoint changed')

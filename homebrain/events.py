@@ -23,3 +23,10 @@ class Events:
 
     def pending(self):
         return [e for e in self.queue if not e["acknowledged"]]
+
+    def resolve(self, key):
+        resolved = [event for event in self.pending() if event['key']==key]
+        for event in resolved:
+            event['acknowledged'] = True
+        if resolved:
+            self.store.audit('advisory_resolved',{'key':key,'ids':[event['id'] for event in resolved]})
