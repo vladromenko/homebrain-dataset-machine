@@ -43,7 +43,7 @@ class LocalVoice:
         saved = self.store.state('local_voice_mode', {})
         if saved.get('enabled'):
             self.enabled = True
-            self.output, self.selection = saved.get('output'), saved.get('selection')
+            self.output, self.selection = saved.get('output'), self.store.state('selected_session',saved.get('selection'))
             self.task = asyncio.create_task(self.run())
 
     def status(self):

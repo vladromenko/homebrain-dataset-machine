@@ -25,9 +25,9 @@ async def invoke(runtime, identifier, tool, arguments, adapters):
     if tool == 'status':
         result = await status(runtime.lab, session)
     elif tool == 'receipt':
-        result = receipts(session)
+        result = await episode(runtime,session,adapters,scope['role'])
     elif tool == 'search':
-        result = [dict(row, text=row['text'][:1200]) for row in runtime.store.retrieve(str(arguments['query'])[:500])[:2]]
+        result = search(runtime, str(arguments['query'])[:500], session, adapters, scope['role'])
     elif tool == 'read':
         result = read(runtime, arguments['path'], adapters, arguments.get('start_line',1))
     elif tool == 'vision':
@@ -60,7 +60,7 @@ def read(runtime, path, adapters, start_line=1):
         raise PermissionError('Source must be in the approved index before reading')
     start_line=max(1,min(int(start_line),100000))
     lines=candidate.read_text(errors='replace').splitlines()
-    content='\n'.join(lines[start_line-1:start_line+39])[:5000]
+    content='\n'.join(lines[start_line-1:start_line+29])[:2600]
     return {'path': str(candidate), 'revision': indexed[0], 'sha256': hashlib.sha256(candidate.read_bytes()).hexdigest(), 'start_line':start_line,'text':content}
 
 
@@ -69,7 +69,7 @@ async def operation(runtime, scope, session, action, identifier):
         raise PermissionError('Specialists only investigate; the coordinator owns typed operations')
     if session is None:
         raise ValueError('Choose a task in the workspace first')
-    allowed = {'prepare_session', 'retry_validation', 'reconcile', 'refresh', 'review'}
+    allowed = set()
     from .intents import authorized
     allowed |= authorized(scope['text'])
     if action not in allowed:
@@ -77,3 +77,39 @@ async def operation(runtime, scope, session, action, identifier):
     request = ActionRequest(action=action, project_id=session['project_id'], session_id=session['session_id'],
         target_id=session['task_id'], expected_revision=session['revision'], idempotency_key=identifier+':'+action)
     return await runtime.lab.action(request)
+
+
+def search(runtime, query, session, adapters, role):
+    result = []
+    prefix = None
+    if session and role in ('dataset','hardware'):
+        name = 'so101-studio' if session['robot_id']=='so101' else 'explorer'
+        if name in adapters:
+            folder = Path(adapters[name].spec['approved_roots'][0])
+            source = folder/('src/so101_lab' if name=='so101-studio' else 'explorer4')
+            prefix = str(source if source.is_dir() else folder)
+    if session and session['project_id']=='smart-swarm' and role=='dataset':
+        peer = runtime.lab.swarm.registration()
+        if peer:
+            prefix = str(Path(peer['repository_path'])/'src/smart_swarm')
+    rows = runtime.store.retrieve(query,prefix=prefix) or runtime.store.retrieve(query)
+    for row in rows[:2]:
+        path = Path(row['path'])
+        if path.is_file():
+            content = path.read_text(errors='replace')[:100000]
+            offset = content.find(row['text'])
+            line = content[:max(0,offset)].count('\n')+1
+            result.append({**row,'start_line':line,'text':row['text'][:900]})
+    return result
+
+
+async def episode(runtime, session, adapters, role):
+    result = await receipts(runtime.lab,session)
+    if role=='dataset':
+        from .source_hints import locations
+        hints = locations(runtime,session or {})
+        if hints and hints[0]['quarantine_lines']:
+            hint = hints[0]
+            result['native_validation_source'] = read(runtime,hint['path'],adapters,max(1,hint['quarantine_lines'][0]-5))
+            result['source_scope'] = 'Current procedure only; it does not prove which checks ran or failed historically. The receipt reason is authoritative. Operator motivation beyond that reason is unknown.'
+    return result

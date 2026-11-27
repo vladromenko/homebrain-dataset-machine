@@ -25,7 +25,7 @@ def call(name, arguments):
     body = json.dumps({'request_id': os.environ['HOMEBRAIN_AGENT_REQUEST'], 'tool': name, 'arguments': arguments}).encode()
     request = urllib.request.Request(os.environ['HOMEBRAIN_AGENT_ORIGIN']+'/api/lab/v1/agent/tool', data=body,
         headers={'Content-Type': 'application/json', 'Authorization': 'Bearer '+os.environ['HOMEBRAIN_AGENT_TOKEN']})
-    with urllib.request.urlopen(request, timeout=240) as response:
+    with urllib.request.urlopen(request, timeout=660) as response:
         return json.load(response)
 
 
@@ -36,14 +36,15 @@ def answer(message):
                 'serverInfo': {'name': 'homebrain', 'version': '1.0.0'}}
     if method == 'tools/list':
         names = ROLE_TOOLS.get(os.environ.get('HOMEBRAIN_AGENT_ROLE'), set())
-        allowed = [tool for tool in TOOLS if tool[0] in names]
+        actions = json.loads(os.environ.get('HOMEBRAIN_AGENT_ACTIONS', '[]'))
+        allowed = [tool for tool in TOOLS if tool[0] in names and (tool[0]!='operation' or actions)]
         return {'tools': [{'name': name, 'description': description, 'inputSchema': {
             'type': 'object', 'properties': properties, 'required': [key for key,value in properties.items() if 'default' not in value], 'additionalProperties': False}}
             for name, description, properties in allowed]}
     if method == 'tools/call':
         params = message['params']
         result = call(params['name'], params.get('arguments', {}))
-        return {'content': [{'type': 'text', 'text': json.dumps(result)}]}
+        return {'content': [{'type': 'text', 'text': json.dumps(result, ensure_ascii=False)}]}
     return {}
 
 
@@ -56,7 +57,7 @@ def main():
                     result = {'jsonrpc': '2.0', 'id': message['id'], 'result': answer(message)}
                 except Exception as error:
                     result = {'jsonrpc': '2.0', 'id': message['id'], 'error': {'code': -32000, 'message': str(error)}}
-                sys.stdout.write(json.dumps(result)+'\n')
+                sys.stdout.write(json.dumps(result, ensure_ascii=False)+'\n')
                 sys.stdout.flush()
         except ValueError:
             pass

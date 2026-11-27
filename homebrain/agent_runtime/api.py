@@ -1,5 +1,6 @@
 """Private runtime tools and authenticated durable conversation stream."""
 import json
+import httpx
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -21,6 +22,8 @@ class Tool(BaseModel):
 
 
 def install(app, runtime, adapters):
+    from .inference import install as install_inference
+    install_inference(app, runtime)
     @app.post('/api/lab/v1/chat')
     async def chat(body: Chat):
         async def stream():
@@ -34,3 +37,5 @@ def install(app, runtime, adapters):
             return await invoke(runtime, body.request_id, body.tool, body.arguments, adapters)
         except (PermissionError, ValueError, KeyError) as error:
             raise HTTPException(403, str(error)) from error
+        except (OSError,TimeoutError,httpx.HTTPError) as error:
+            raise HTTPException(503,'Native evidence unavailable: '+str(error)) from error

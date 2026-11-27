@@ -8,7 +8,7 @@ function identity(source: string, fallback: string) {
   return { robot:robot.replace(/-\d+$/,''),role };
 }
 export function CameraGrid({ session, task }: any) {
-  const sources = (task?.camera_roles || ['top','wrist']).map((role: string) => identity(role,session.robot_id));
+  const sources = (task?.camera_roles || (session.project_id==='smart-swarm' ? ['so101-1/wrist','so101-1/top','tank-1/front','rosmaster-1/front'] : session.robot_id==='so101' ? ['top','wrist'] : ['front'])).map((role: string) => identity(role,session.robot_id));
   const multiple = sources.some((source: any) => source.robot !== session.robot_id);
   const [chosen,setChosen] = useState<string | null>(null);
   const mobilePhase = ['mobile_lead_in','relocation','settled_capture','pending_reveal'].includes(session.state);

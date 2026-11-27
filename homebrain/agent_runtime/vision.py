@@ -4,7 +4,7 @@ from collections import deque
 from types import SimpleNamespace
 import cv2
 import numpy as np
-import psutil
+import httpx
 from ..native_adapters.camera import frame
 
 
@@ -27,11 +27,13 @@ class Snapshot:
 
 async def inspect(runtime, arguments):
     robot,role = arguments['robot_id'],arguments['role']
-    content,kind,metadata = await frame(runtime.lab.native,robot,role)
-    studio = await runtime.lab.native.request('studio','/api/lab/status')
-    explorer = await runtime.lab.native.request('explorer','/api/health')
-    busy = studio['recording'].get('active') or studio['teleoperation'].get('active') or explorer.get('armed')
-    if busy or psutil.virtual_memory().available/2**30 < runtime.config['min_available_gb']+1:
+    try:
+        content,kind,metadata = await frame(runtime.lab.native,robot,role)
+    except (OSError,ValueError,KeyError,httpx.HTTPError) as error:
+        return {'robot_id':robot,'role':role,'available':False,'reason':str(error),'policy_input':False}
+    from ..lab.workload import inspect as workload
+    load = await workload(runtime.lab)
+    if load['profile'] != 'Idle' or load['available_gib'] < load['reservation_gib']+1:
         return {**metadata,'interpretation':'Visual inference deferred by native workload or memory reservation. The authorized source view remains available.','policy_input':False}
     snapshot = Snapshot(content,metadata['age_ms'])
     interpretation = await runtime.perception.describe(snapshot,str(arguments['question'])[:800])

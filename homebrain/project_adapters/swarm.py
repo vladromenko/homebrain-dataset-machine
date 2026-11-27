@@ -39,15 +39,24 @@ class Swarm:
             request = {"id": identifier, "method": method, "params": params or {}}
             self.process.stdin.write((json.dumps(request)+"\n").encode())
             await self.process.stdin.drain()
-            line = await asyncio.wait_for(self.process.stdout.readline(), timeout=20)
+            return await self.receive(identifier)
+
+    async def receive(self, identifier):
+        deadline = asyncio.get_running_loop().time()+20
+        result = None
+        while result is None:
+            remaining = deadline-asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise TimeoutError('Project response unknown; reconcile the persisted request key')
+            line = await asyncio.wait_for(self.process.stdout.readline(),timeout=remaining)
             if not line:
-                raise OSError("Project facade disconnected; reconcile pending operations before retrying")
+                raise OSError('Project facade disconnected; reconcile before retrying')
             reply = json.loads(line)
-            if reply.get("error"):
-                raise ValueError(reply["error"]["message"])
-            if reply.get("id") != identifier:
-                raise OSError("Project response correlation failed")
-            return reply["result"]
+            if reply.get('id') == identifier:
+                if reply.get('error'):
+                    raise ValueError(reply['error']['message'])
+                result = reply
+        return result['result']
 
     async def close(self):
         if self.process and self.process.returncode is None:

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { lab, type Session } from '@/lib/api';
 import { tankKeys, robotKey, typing, standardPad, neutralPad, rosInput } from './controlMappings';
 type Send = (value: unknown) => void;
-type InputState = { keys: Set<string>; locked: Set<string>; padBlocked: boolean };
+type InputState = { keys: Set<string>; locked: Set<string>; padBlocked: boolean; buttons: Set<number> };
 const modal = () => !!document.querySelector('[role="dialog"]');
 
 export function useControl(session: Session | null) {
@@ -45,12 +45,13 @@ function focusedInput(state: InputState, send: Send, robot: string, precision: R
   const blocked = typing() || modal(); const pad = standardPad();
   if (pad && neutralPad(pad) && !blocked) state.padBlocked = false;
   if (robot === 'rosmaster') send(rosInput(blocked ? new Set() : state.keys, state.padBlocked || blocked ? null : pad, precision.current));
+  if (robot === 'rosmaster' && pad && !state.padBlocked && !blocked) presetButtons(state, pad, send);
   if (robot === 'tank' && pad && !state.padBlocked && !blocked) tankPad(pad, send);
   if (pad?.buttons[1]?.pressed && !state.padBlocked && !blocked) { state.keys.clear(); state.padBlocked = true; send({ kind:'clear' }); }
 }
 
 function installInputs(ws: WebSocket, robot: string, precision: React.RefObject<boolean>) {
-  const state: InputState = { keys:new Set(),locked:new Set(),padBlocked:true };
+  const state: InputState = { keys:new Set(),locked:new Set(),padBlocked:true,buttons:new Set() };
   const send: Send = value => { if (ws.bufferedAmount > 65536) ws.close();
     else if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(value)); };
   const clear = (release = false) => { state.keys.forEach(key => state.locked.add(key)); state.keys.clear(); state.padBlocked = true; send({ kind:release ? 'clear' : 'clear_inputs' }); };
@@ -72,4 +73,12 @@ function installInputs(ws: WebSocket, robot: string, precision: React.RefObject<
 function tankPad(pad: Gamepad, send: Send) {
   const [x,y] = pad.axes;
   for (const [key,pressed] of Object.entries({ up:y < -.2,down:y > .2,left:x < -.2,right:x > .2 })) send({ kind:'key',key,source:'gamepad:'+key,pressed });
+}
+
+function presetButtons(state: InputState, pad: Gamepad, send: Send) {
+  for (const [button, name] of [[0, 'look'], [2, 'carry']] as const) {
+    const pressed = pad.buttons[button]?.pressed;
+    if (pressed && !state.buttons.has(button)) send({kind: 'native_action', action: 'preset', name});
+    if (pressed) state.buttons.add(button); else state.buttons.delete(button);
+  }
 }

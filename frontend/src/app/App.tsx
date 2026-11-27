@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bot, ChevronLeft, Radio, ShieldCheck, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { RobotViews } from '@/features/RobotViews';
 import { Advisories } from '@/features/Advisories';
 import { Records } from '@/features/Records';
 import { Projects, SettingsView, Navigation } from './Navigation';
-import { useAction, useOverview, useSession, useTasks } from './useWorkspace';
+import { useAction, useOverview, useSession, useTasks, useTaskCard } from './useWorkspace';
 
 export function App() {
   const [page, setPage] = useState('Projects');
@@ -20,6 +20,8 @@ export function App() {
   const data = useOverview();
   const selected = useSession();
   const { session, setSession } = selected;
+  useEffect(() => {if (session) setProject(session.project_id);}, [session?.project_id]);
+  const task = useTaskCard(session);
   const tasks = useTasks(project, group);
   const control = useControl(page === 'Projects' ? session : null);
   const actions = useAction(session, setSession, data.setError);
@@ -29,7 +31,7 @@ export function App() {
     catch (failure) { data.setError(String(failure)); }
   }
   const props = { page, project, group, setGroup, setProject, tasks, session, setSession,
-    select, overview: data.overview, control, actions, retain: selected.retain };
+    select, task, overview: data.overview, control, actions, retain: selected.retain };
   return <div className={`app-shell ${chat ? 'with-chat' : ''}`}>
     <Navigation page={page} connected={!!data.overview} onPage={(value: string) => { control.clear(); setPage(value); }}/>
     <div className="app-body">
@@ -71,7 +73,7 @@ function Page(props: any) {
   return <>
     <Button variant="ghost" size="sm" className="back"
       onClick={() => { control.clear(); setSession(null); }}><ChevronLeft size={14}/> Task queue</Button>
-    <Workspace session={session} task={tasks.find(session.task_id)} overview={overview}
+    <Workspace session={session} task={props.task || tasks.find(session.task_id)} overview={overview}
       control={control} busy={actions.busy} onAction={actions.act}/>
   </>;
 }

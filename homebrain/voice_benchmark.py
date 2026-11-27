@@ -43,7 +43,7 @@ def install(app, capture, audio_task, voice, microphones, store):
         result = await audio_task(capture)
         report = {**score(body.reference, result['text']), 'reference': body.reference,
                   'recognized': result['text'], 'elapsed_s': time.monotonic()-started,
-                  'device_id': microphones.selected['id'], 'runtime': result['runtime'],
+                  'device_id': result['input_provenance']['device']['id'], 'runtime': result['runtime'],
                   'created_at': time.time(), 'scope': 'single attended utterance; no population accuracy claim'}
         store.put('speech_benchmark', report)
         return report

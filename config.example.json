@@ -4,7 +4,7 @@
   "work": "CHANGE_TO_ABSOLUTE_PRIVATE_WORK_DIRECTORY",
   "camera_id": "/dev/v4l/by-id/usb-YOUR_OVERVIEW_CAMERA-video-index0",
   "camera_shared_url": "http://127.0.0.1:8020/api/frame/top",
-  "camera_shared_status": "http://127.0.0.1:8020/api/status",
+  "camera_shared_status": "http://127.0.0.1:8020/api/lab/status",
   "camera_fps": 2,
   "microphone_fallback": "/dev/snd/by-id/usb-YOUR_APPROVED_MICROPHONE",
   "microphone_preferred": null,
@@ -15,11 +15,13 @@
     "adapters/rosmaster.json",
     "adapters/mujoco.json"
   ],
-  "model": "qwen",
+  "model": "qwen3-4b-instruct",
   "min_available_gb": 8,
-  "context": 4096,
+  "context": 6144,
   "max_tokens": 320,
-  "threads": 2,
+  "threads": 4,
   "gpu_layers": 0,
-  "wake_phrase": "Hey, Homebrain"
+  "wake_phrase": "Hey, Homebrain",
+  "model_load_mode": "mmap",
+  "model_repack": false
 }

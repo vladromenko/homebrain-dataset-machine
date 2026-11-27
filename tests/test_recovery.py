@@ -48,7 +48,7 @@ def test_stale_buffer_does_not_present_live_image():
 
 
 def test_camera_disconnection_and_reconnection(monkeypatch):
-    vision = Vision({"camera_id":"fixture","camera_fps":2})
+    vision = Vision({"camera_id":"fixture","camera_fps":2,"camera_shared_url":"http://native/frame"})
     attempts = []
     async def shared():
         attempts.append(1)

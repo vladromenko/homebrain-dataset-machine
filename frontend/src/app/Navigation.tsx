@@ -2,6 +2,8 @@ import { Boxes, Camera, CircleHelp, FolderOpen, Layers3, Settings, Workflow, Zap
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Progress } from '@/features/Progress';
+import { MemorySettings } from '@/features/MemorySettings';
 import { VoiceSettings } from '@/features/VoiceSettings';
 import { type Session, type Task } from '@/lib/api';
 
@@ -29,7 +31,7 @@ export function Projects(props: any) {
     <div className="section-heading"><div><div className="eyebrow">YOUR LABORATORY</div>
       <h1>Make every attempt count.</h1><p className="muted">Choose a project. Follow its protocol. Keep the native evidence.</p>
     </div><Badge variant="secondary">Local collection</Badge></div>
-    <ProjectCards {...props}/>
+    <ProjectCards {...props}/><Progress project={project}/>
     {resumes.map((row: Session) => <div className="resume" key={row.session_id}>
       <div><strong>Continue your attempt</strong><p>{row.task_id} · {row.state}</p></div>
       <Button variant="outline" onClick={() => retain(row)}>Resume session</Button>
@@ -40,10 +42,10 @@ export function Projects(props: any) {
   </div>;
 }
 
-function ProjectCards({ overview, project, setProject }: any) {
+function ProjectCards({ overview, project, setProject, setGroup }: any) {
   return <div className="project-grid">{overview?.projects.map((item: any) =>
     <button className={`project-card ${project === item.project_id ? 'selected' : ''}`}
-      key={item.project_id} onClick={() => setProject(item.project_id)}>
+      key={item.project_id} onClick={() => {setProject(item.project_id); setGroup('');}}>
       <div className="project-icon">{item.project_id === 'smart-swarm' ? <Zap/> : <Boxes/>}</div>
       <h2>{item.title}</h2>
       <p>{item.project_id === 'smart-swarm' ? 'Staged visual stories · project-owned scientific gates' : 'SO101, Tank and ROSMASTER · native human demonstrations'}</p>
@@ -55,7 +57,7 @@ function TaskNavigation({ overview, project, group, setGroup, tasks }: any) {
   const groups = overview?.projects.find((item: any) => item.project_id === project)?.task_groups || [];
   return <div className="list-heading task-navigation"><h2>Recording tasks</h2>
     <select aria-label="Task group" value={group} onChange={event => setGroup(event.target.value)}>
-      <option value="">All groups</option>
+      <option value="">Default group</option>
       {groups.map((item: any) => <option key={item.id || item} value={item.id || item}>{item.title || item.id || item}</option>)}
     </select>
     <span>{tasks.offset + 1}–{tasks.offset + tasks.tasks.length} of {tasks.total || '…'}</span>
@@ -78,6 +80,6 @@ export function SettingsView({ session }: any) {
       <p>Native service identities, camera roles and the shared inference pool are configured on Homebrain. Devices reconnect by persistent identity.</p>
       <p>Microphone access is opt-in. Use push-to-talk in the assistant. Local microphone/speaker mode is half duplex.</p>
       <p>Concurrency qualification requires an attended native recording under assistant load before existing reservations can be relaxed.</p>
-    </Card><VoiceSettings session={session}/>
+    </Card><VoiceSettings session={session}/><MemorySettings session={session}/>
   </div>;
 }

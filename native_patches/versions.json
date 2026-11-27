@@ -1,10 +1,10 @@
 {
   "explorer": {
-    "baseline": "89bba26780619ddec7355da60c7b57a006711daf",
-    "adapter_commit": "3835f2ff8b0654d22f89a7878ae36290886b69bc"
+    "adapter_commit": "331784900a87aa23d62f3de09da861d64facc3cb",
+    "baseline": "89bba26780619ddec7355da60c7b57a006711daf"
   },
   "studio": {
-    "baseline": "5c5c8043668db08601b68f1c0fa11a0c77e3dbc2",
-    "adapter_commit": "74af885409896b4375683b3d77b4a5d94492bb70"
+    "adapter_commit": "d74597fdb73aaf595e88f83226a5f3e91fb54c75",
+    "baseline": "5c5c8043668db08601b68f1c0fa11a0c77e3dbc2"
   }
 }

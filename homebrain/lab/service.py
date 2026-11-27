@@ -7,6 +7,7 @@ import httpx
 from .contracts import SessionSnapshot, ActionResult
 from .journal import Journal, Conflict
 from . import catalog
+from .fencing import decorate, expected, project_request
 from ..native_adapters.http import Native
 from ..native_adapters.studio import Studio
 from ..project_adapters.swarm import Swarm
@@ -46,9 +47,8 @@ class Lab:
             return {"tasks": cards, "total": len(cards)}
         if project != "smart-swarm":
             raise KeyError("Unknown project")
-        options = {"offset": offset, "limit": min(limit, 100)}
-        if group:
-            options["group"] = group
+        options = {"offset": offset, "limit": max(1, min(limit, 50))}
+        options["group"] = group or "station_setup"
         return await self.swarm.call("tasks", options)
 
     async def select(self, project, task):
@@ -62,11 +62,14 @@ class Lab:
                 robot_id=card["robot_id"], domain="physical", instruction="Check the setup, then prepare the native session.",
                 permitted_actions=["prepare_session"]).model_dump()
         self.journal.save_session(snapshot)
+        self.remember_selection(snapshot)
+        return snapshot
+
+    def remember_selection(self, snapshot):
         if hasattr(self,'memory_store'):
             self.memory_store.put('active_session',True)
             self.memory_store.put('selected_session',snapshot['session_id'])
             self.on_selection(snapshot['session_id'])
-        return snapshot
 
     async def snapshot(self, identifier):
         saved = self.journal.session(identifier)
@@ -78,14 +81,15 @@ class Lab:
             dataset=current['native_ids'].get('studio_dataset_id') or current['readiness'].get('component',{}).get('native_dataset_id')
             current['recording']=native['recording'] if dataset and native['recording'].get('dataset_id')==dataset else {'state':'No native recording bound','active':False}
             current["project_state"]["homebrain_operations"] = self.journal.operations(identifier)
+            self.pending(current)
             current['project_state']['overview_geometry'] = self.journal.profile('camera_geometry') or {}
-            return current
+            return await decorate(self, current)
         unresolved = [row for row in self.journal.unresolved() if row['session_id'] == identifier]
         if unresolved:
             saved['pending_work'] += [{'operation_id': row['id'], 'action': row['action'], 'status': row['state']} for row in unresolved]
             saved['permitted_actions'] = ['reconcile'] if any(row['state'] == 'unknown' for row in unresolved) else []
         saved['project_state']['overview_geometry'] = self.journal.profile('camera_geometry') or {}
-        return saved
+        return await decorate(self, saved)
 
     async def action(self, request):
         session = self.journal.session(request.session_id)
@@ -111,18 +115,33 @@ class Lab:
             worker.add_done_callback(self.workers.discard)
         return self.result(operation["id"], "pending", session["revision"])
 
+    def pending(self, session):
+        rows = [row for row in self.journal.unresolved() if row['session_id']==session['session_id']]
+        if rows:
+            session['pending_work'] += [{'operation_id':row['id'],'action':row['action'],'status':row['state']} for row in rows]
+            session['permitted_actions'] = ['reconcile'] if any(row['state']=='unknown' for row in rows) else []
+
     async def project_action(self, operation, request):
         try:
+            unresolved = [row for row in self.journal.unresolved() if row['session_id']==request.session_id and row['id']!=operation]
+            if unresolved and request.action not in ('reconcile','stop'):
+                raise PermissionError('Reconcile the unresolved operation before another action')
+            if request.action == 'reconcile':
+                from .recovery import reconcile_project
+                return await reconcile_project(self, operation, request)
             geometry = self.journal.profile('camera_geometry') or {}
             if request.action in ('start_recording', 'start_mobile', 'mark', 'grant_relocation', 'predict', 'reveal') and geometry.get('requires_recheck'):
-                raise PermissionError('The C920 viewpoint changed. Capture and confirm the station again before starting.')
+                raise PermissionError('The C920 references require recheck. Capture and confirm the station again before starting.')
             await self.project_control(request)
             if request.action == 'enable_control':
                 response = self.result(operation, 'accepted', request.expected_revision, 'Native control transition acknowledged.')
                 self.journal.complete(operation, response)
                 return response
             else:
-                response = await self.swarm.call("action", request.model_dump())
+                outgoing = project_request(request)
+                if request.action=='finish_recording':
+                    outgoing['_native_finish_binding'] = self.journal.profile('finalize:'+request.session_id)
+                response = await self.swarm.call('action',outgoing)
             response["native_acknowledgement"]["project_operation_id"] = response["operation_id"]
             response["operation_id"] = operation
             if request.action == 'confirm_station' and response['status'] == 'accepted':
@@ -151,7 +170,7 @@ class Lab:
             native = await self.native.request('studio', '/api/lab/status')
             if native['teleoperation'].get('active'):
                 raise PermissionError('Native control is already active. Reconcile its owner first.')
-            generation = native['hardware_stop_generation']
+            generation = expected(request.arguments, native['hardware_stop_generation'])
             proof = self.controls.permit(session, generation)
             await self.studio.enable(generation, proof)
         if request.action == 'start_recording':
@@ -161,11 +180,14 @@ class Lab:
             dataset = session['native_ids'].get('studio_dataset_id') or session['readiness'].get('component', {}).get('native_dataset_id')
             if not dataset:
                 raise ValueError('Prepare the project task before native recording')
-            await self.controls.record_permit(session, native, dataset)
+            await self.controls.record_permit(session, native, dataset, request.arguments)
         if request.action == 'finish_recording':
-            self.controls.leases.finalize(session['session_id'])
             native = await self.native.request('studio', '/api/lab/status')
-            self.journal.profile('finalize:'+request.session_id, {'dataset_id': native['recording'].get('dataset_id'),
+            dataset = session['native_ids'].get('studio_dataset_id') or session['readiness'].get('component',{}).get('native_dataset_id')
+            if not dataset or native['recording'].get('dataset_id')!=dataset or not native['recording'].get('session_id'):
+                raise PermissionError('Native recording ownership changed; refresh the retained attempt before Finish')
+            self.controls.leases.finalize(session['session_id'])
+            self.journal.profile('finalize:'+request.session_id, {'dataset_id':dataset,'session_id':native['recording']['session_id'],
                 'episode_id': native['recording'].get('episode_id'), 'finish_intent': True})
 
     def result(self, identifier, state, revision, message="Reconcile the authoritative snapshot before retrying.", acknowledgement=None):

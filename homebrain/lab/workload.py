@@ -10,8 +10,9 @@ async def inspect(lab):
         lab.native.request('explorer', '/api/lab/rosmaster/status'))
     training = explorer.get('compute_job') or any(job.get('state') in
         ('running', 'starting', 'queued', 'waiting_resources') for job in studio.get('jobs', []))
+    training = training or any(row['action']=='submit_job' for row in lab.journal.unresolved())
     recording = studio['recording'].get('active') or studio['teleoperation'].get('active')
-    recording = recording or explorer.get('armed') or explorer['session']['thread_active'] or ros['recording']['thread_active']
+    recording = recording or explorer.get('armed') or explorer['session']['thread_active'] or ros['armed'] or ros['recording']['thread_active']
     profile = 'Training' if training else 'Recording' if recording else 'Idle'
     qualification = lab.journal.profile('concurrency') or {}
     available = psutil.virtual_memory().available/2**30

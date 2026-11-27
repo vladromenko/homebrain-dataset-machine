@@ -40,7 +40,7 @@ def capabilities(studio, explorer):
         state="available" if available else "unavailable", inputs=inputs,
         operations=["prepare_session", "enable_control", "start_recording", "finish_recording", "stop"],
         cameras=cameras if robot == "so101" else [{"role": "front", "source": "native_agent", "freshness": "readback_required"}],
-        sensors=[{"profile": key, "provenance": value} for key, value in profiles.items() if value["robot"] == robot],
+        sensors=[{"source":"Studio canonical owner","configured":studio.get("recording",{}).get("settings",{})}] if robot=="so101" else [{"profile": key, "provenance": value} for key, value in profiles.items() if value["robot"] == robot],
         recorders=["native LeRobot"], unsupported=["calibrated shared world transform"],
         models=[{"provenance": "existing native MuJoCo; dynamics not hardware calibrated"}]).model_dump()
         for robot, label, owner, available, inputs in [

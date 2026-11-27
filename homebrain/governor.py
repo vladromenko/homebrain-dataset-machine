@@ -11,6 +11,7 @@ class Governor:
         self.config,self.adapter,self.store = config,adapter,store
         self.state = "Monitoring"
         self.latest = None
+        self.restart_after = 0
 
     async def run(self):
         while True:
@@ -33,10 +34,12 @@ class Governor:
         disabled = (Path(self.config["runtime"])/"model-disabled").exists()
         process = identity(Path(self.config["runtime"])/"model.json")
         if yielding and process:
+            self.restart_after = time.monotonic()+30
+            self.store.audit('inference_yield',load)
             await asyncio.to_thread(stop,self.config,'perception')
             await asyncio.to_thread(stop,self.config,"model")
             self.state = "Yielding to native recording, training or memory reservation"
-        if not yielding and not disabled and not process and available>self.config["min_available_gb"]+1.5:
+        if not yielding and not disabled and not process and time.monotonic()>=self.restart_after and available>self.config["min_available_gb"]+1.5:
             args = model_args(self.config)
             if Path(args[0]).exists():
                 start("model",["nice","-n","15"]+args,self.config)

@@ -8,7 +8,12 @@ const WebViewer = lazy(() => import('@rerun-io/web-viewer-react'));
 export function ReplayCatalog() {
   const [records, setRecords] = useState<any[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  useEffect(() => {api(`${lab}/replays`).then(value => setRecords(value.captures)).catch(() => {});}, []);
+  useEffect(() => {
+    const refresh = () => api(`${lab}/replays`).then(value => setRecords(value.captures)).catch(() => {});
+    refresh(); const timer = setInterval(refresh, 4000);
+    window.addEventListener('homebrain-capture-changed', refresh);
+    return () => {clearInterval(timer); window.removeEventListener('homebrain-capture-changed', refresh);};
+  }, []);
   return <>
     <div className="list-heading"><h2>Sensor archives & 3D replay</h2><span>Native MCAP · observation evidence</span></div>
     <div className="task-list">{records.map(record => <Card className="task-row" key={record.id}>

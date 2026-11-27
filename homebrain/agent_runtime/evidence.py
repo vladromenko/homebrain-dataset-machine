@@ -14,7 +14,9 @@ def compact(value, depth=0):
 def selected(session):
     if not session:
         return {'selection':'No task selected'}
-    keys = ('session_id','project_id','task_id','robot_id','domain','revision','state','instruction','permitted_actions','native_ids','blockers','recovery')
+    keys = ('project_id','task_id','robot_id','state','instruction','permitted_actions','blockers')
+    if session.get('project_state',{}).get('archive_inspection'):
+        keys = tuple(key for key in keys if key!='task_id')
     return {**{key:session.get(key) for key in keys}, 'recording':recording(session.get('recording',{})),
             'receipt_count':len(session.get('receipts',[]))}
 
@@ -30,20 +32,40 @@ async def status(lab, session):
     data = studio['data']
     preview = {name:{key:camera.get(key) for key in ('connected','error','last_frame_age_ms','observed_fps')}
                for name,camera in data.get('preview',{}).get('cameras',{}).items()}
-    return {'selected':selected(session),'studio':{'recording':recording(data.get('recording',{})),
+    return {'selected':{key:session.get(key) for key in ('state','instruction','permitted_actions')} if session else None,'studio':{'recording':recording(data.get('recording',{})),
             'teleoperation':recording(data.get('teleoperation',{})),'preview':preview},
             'explorer':{key:explorer.get('data',{}).get(key) for key in ('armed','selected_robot','session','compute_job')},
-            'authority':'Current native readback; operator-only'}
+            'availability':{'studio':{'available':studio['available'],'error':studio.get('error')},
+                            'explorer':{'available':explorer['available'],'error':explorer.get('error')}},
+            'authority':'Current native readback when available; operator-only'}
 
 
-def receipts(session):
+async def receipts(lab, session):
     if not session:
         return {'error':'No task selected'}
     result = []
-    for receipt in session['receipts'][-4:]:
+    evidence = await current_receipts(lab,session)
+    for receipt in evidence[-4:]:
         value = receipt.get('native_episode',receipt.get('native_recording',receipt))
         metadata = value.get('metadata',value)
-        keys = ('episode_id','session_id','status','source','test_only','frames','reason','error','abort_reason','stop_reason','termination','outcome','timing','quality','validation')
+        keys = ('episode_id','session_id','task','status','source','test_only','frames','reason','error','abort_reason','stop_reason','termination','outcome','timing','quality','validation')
         selected_metadata = {key:compact(metadata[key]) for key in keys if key in metadata}
         result.append({'source':receipt.get('source'),'storage':value.get('storage'),'receipt':selected_metadata or compact(value)})
-    return {'native_ids':session['native_ids'],'selected_receipts':result,'scope':'Operator evidence, never policy input'}
+    configuration = {}
+    if session['robot_id']=='so101' and session['native_ids'].get('dataset_id'):
+        catalog = await lab.native.request('studio','/api/status?catalog=selected-episode')
+        dataset = next((row for row in catalog.get('datasets',[]) if row.get('dataset_id')==session['native_ids']['dataset_id']),{})
+        configuration.update({key:compact(dataset[key]) for key in ('source','camera_mode','cameras','settings','test_only') if key in dataset})
+    return {'native_ids':session['native_ids'],'selected_receipts':result,'native_configuration':configuration,
+            'scope':'Operator evidence, never policy input'}
+
+
+async def current_receipts(lab, session):
+    identifiers = session['native_ids']
+    if session['robot_id']=='so101' and identifiers.get('dataset_id') and identifiers.get('episode_id'):
+        records = await lab.native.request('studio',f"/api/episodes/{identifiers['dataset_id']}?include_frames=false&episode_id={identifiers['episode_id']}")
+        if len(records)!=1:
+            raise ValueError('Selected native receipt is unavailable; refresh the native archive')
+        retained = [row for row in session['receipts'] if row.get('source')=='Studio validation']
+        return retained+[{'source':'Studio current native receipt','native_episode':records[0]}]
+    return session['receipts']

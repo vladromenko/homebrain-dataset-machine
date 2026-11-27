@@ -24,6 +24,7 @@ export function useSimulation(robot: string, kind: string) {
         result = await call('release'); owned.current = false;
       } else result = await call(name, {seed: 0});
       if (name === 'close') owned.current = false;
+      if (result.owner !== owner.current) owned.current = false;
       setState(result);
     } catch (failure) { setError(String(failure)); }
     finally { setBusy(false); }
@@ -55,10 +56,14 @@ function installSimulation({kind, owner, owned, target, holding, setState, setEr
     } finally { inFlight = false; }
   }, 400);
   const visibility = () => { if (document.hidden) stop(); };
+  const focus = () => {if (document.activeElement?.closest('.assistant-slot') || document.querySelector('[role=dialog]')) stop();};
+  const observer = new MutationObserver(focus);
+  observer.observe(document.body, {childList: true, subtree: true});
+  document.addEventListener('focusin', focus);
   window.addEventListener('homebrain-stop-simulation', stop);
   window.addEventListener('blur', stop); document.addEventListener('visibilitychange', visibility);
   return () => {
-    clearInterval(timer); stop(); window.removeEventListener('homebrain-stop-simulation', stop); window.removeEventListener('blur', stop);
+    clearInterval(timer); observer.disconnect(); document.removeEventListener('focusin', focus); stop(); window.removeEventListener('homebrain-stop-simulation', stop); window.removeEventListener('blur', stop);
     document.removeEventListener('visibilitychange', visibility);
   };
 }

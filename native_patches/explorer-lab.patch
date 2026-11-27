@@ -13,10 +13,10 @@ index eda3f8b..22a6ae7 100644
                'wrist':'/dev/v4l/by-id/usb-HD_USB_Camera_HD_USB_Camera-video-index0'}
 diff --git a/explorer4/lab_api.py b/explorer4/lab_api.py
 new file mode 100644
-index 0000000..66c9142
+index 0000000..e6c7b3d
 --- /dev/null
 +++ b/explorer4/lab_api.py
-@@ -0,0 +1,217 @@
+@@ -0,0 +1,221 @@
 +"""Additive Homebrain boundary over the existing application singletons."""
 +import asyncio
 +import time
@@ -53,7 +53,7 @@ index 0000000..66c9142
 +        stamp = sample.get('observation_timestamp_ns')
 +        return {'contract_version': 'homebrain.lab.v1', 'generation': self.control.generation,
 +                'robot': self.control.robot, 'owner': self.control.owner,
-+                'session_id': self.control.session, 'phase': self.session.phase,
++                'session_id': self.control.session, 'episode_id':getattr(self.session,'homebrain_episode_id',None), 'phase': self.session.phase,
 +                'thread_active': bool(self.session.thread and self.session.thread.is_alive()),
 +                'recording': self.session.record_requested, 'frames': self.session.frame_count,
 +                'last_episode_id': self.session.last_episode_id, 'error': self.session.error,
@@ -97,7 +97,7 @@ index 0000000..66c9142
 +    async def control_socket(self, websocket):
 +        await websocket.accept()
 +        owner = 'homebrain-' + uuid.uuid4().hex
-+        self.connections[owner] = time.monotonic()
++        self.connections[owner] = 0
 +        try:
 +            await websocket.send_json({'owner': owner, 'status': self.status()})
 +            while True:
@@ -140,6 +140,8 @@ index 0000000..66c9142
 +
 +
 +def install(app, control, session):
++    from .lab_local import LocalBoundary
++    app.add_middleware(LocalBoundary)
 +    bridge = Bridge(control, session)
 +
 +    @app.get('/api/lab/status')
@@ -174,6 +176,8 @@ index 0000000..66c9142
 +    install_observation(app)
 +    from .lab_collection import install as install_collection
 +    install_collection(app)
++    from .lab_capture import install as install_capture
++    install_capture(app)
 +    install_readback(app)
 +    install_simulation(app)
 +    return bridge
@@ -234,12 +238,37 @@ index 0000000..66c9142
 +            return execute(kind, service, body.command, body.arguments)
 +        except Exception as error:
 +            raise HTTPException(409, str(error)) from error
+diff --git a/explorer4/lab_capture.py b/explorer4/lab_capture.py
+new file mode 100644
+index 0000000..992f142
+--- /dev/null
++++ b/explorer4/lab_capture.py
+@@ -0,0 +1,19 @@
++"""Expose the existing bounded diagnostic reader without creating another writer."""
++from typing import Literal
++from fastapi import HTTPException
++from pydantic import BaseModel, ConfigDict
++
++
++class Capture(BaseModel):
++    model_config = ConfigDict(extra='forbid')
++    seconds: Literal[15,30,60]
++
++
++def install(app):
++    @app.post('/api/lab/observation/capture')
++    def capture(body: Capture):
++        from . import fleet_capture
++        try:
++            return fleet_capture.start(body.seconds)
++        except (ValueError,RuntimeError) as error:
++            raise HTTPException(409,str(error)) from error
 diff --git a/explorer4/lab_collection.py b/explorer4/lab_collection.py
 new file mode 100644
-index 0000000..788899e
+index 0000000..67669de
 --- /dev/null
 +++ b/explorer4/lab_collection.py
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,85 @@
 +"""Narrow access to native collection setup and completed quality receipts."""
 +import json
 +import re
@@ -286,6 +315,7 @@ index 0000000..788899e
 +
 +
 +def install(app):
++    install_exclusion(app)
 +    @app.get('/api/lab/rosmaster/status')
 +    def rosmaster_status():
 +        from .rosmaster_console import operator, recorder
@@ -305,6 +335,49 @@ index 0000000..788899e
 +            return quality(identifier)
 +        except ValueError as error:
 +            raise HTTPException(422, str(error)) from error
++
++
++class Exclusion(BaseModel):
++    model_config = ConfigDict(extra='forbid')
++    collection_id: str
++
++
++def install_exclusion(app):
++    @app.post('/api/lab/quality/{identifier}/exclude')
++    def exclude(identifier: str, body: Exclusion):
++        receipt = quality(identifier)
++        with catalog.connect() as db:
++            series = db.execute('SELECT * FROM collection_series WHERE id=?',(body.collection_id,)).fetchone()
++        if not series or series['operator']!='Homebrain Lab' or not series['description'].startswith('Homebrain Lab development / '):
++            raise HTTPException(403,'Only this Homebrain development collection can be excluded')
++        if receipt.get('attempt',{}).get('series')!=body.collection_id:
++            raise HTTPException(409,'Episode does not belong to the selected native collection')
++        collection.exclude(identifier)
++        return {'episode_id':identifier,'user_excluded':True,'raw_retained':True,'source':'Explorer collection.exclude'}
+diff --git a/explorer4/lab_local.py b/explorer4/lab_local.py
+new file mode 100644
+index 0000000..6d2257e
+--- /dev/null
++++ b/explorer4/lab_local.py
+@@ -0,0 +1,18 @@
++"""New Homebrain transport stays loopback-only behind its authenticated app."""
++from starlette.responses import JSONResponse
++
++
++class LocalBoundary:
++    def __init__(self, app):
++        self.app = app
++
++    async def __call__(self, scope, receive, send):
++        client = scope.get('client') or ('',0)
++        internal = scope.get('path','').startswith('/api/lab/')
++        if internal and client[0] not in ('127.0.0.1','::1'):
++            if scope['type'] == 'websocket':
++                await send({'type':'websocket.close','code':4403})
++            else:
++                await JSONResponse({'detail':'Use the authenticated Homebrain app'},403)(scope,receive,send)
++        else:
++            await self.app(scope,receive,send)
 diff --git a/explorer4/lab_observation.py b/explorer4/lab_observation.py
 new file mode 100644
 index 0000000..baaf65c
@@ -356,6 +429,29 @@ index 0000000..baaf65c
 +            return response(result,'rosmaster',(time.monotonic()-started)*1000)
 +        except Exception as error:
 +            raise HTTPException(503,'No fresh authorized ROSMASTER frame: '+str(error)) from error
+diff --git a/explorer4/lab_ros_guard.py b/explorer4/lab_ros_guard.py
+new file mode 100644
+index 0000000..da86f49
+--- /dev/null
++++ b/explorer4/lab_ros_guard.py
+@@ -0,0 +1,17 @@
++"""Fence Homebrain WS actions to the actual browser input and captured STOP generation."""
++import time
++
++
++def generation(operator, owner, action, value):
++    if 'homebrain_request' not in value:
++        return operator.generation
++    expected = value.get('expected_generation')
++    with operator.lock:
++        if type(expected) is not int or expected != operator.generation:
++            raise PermissionError('Homebrain action fenced by STOP; refresh and explicitly enable again')
++        stamp, _ = operator.inputs.get(owner, (0, None))
++        if time.monotonic()-stamp > .3:
++            raise PermissionError('Focused native browser input is required')
++        if action in ('record_start', 'mirror_on', 'preset') and (operator.owner != owner or not operator.lease):
++            raise PermissionError('Explicitly enable this native controller before the requested action')
++    return expected
 diff --git a/explorer4/lab_simulation.py b/explorer4/lab_simulation.py
 new file mode 100644
 index 0000000..979e8ae
@@ -405,10 +501,10 @@ index 0000000..979e8ae
 +    _reservations.pop(kind).close()
 +    return {'closed': True, 'domain': 'simulation'}
 diff --git a/explorer4/rosmaster_console.py b/explorer4/rosmaster_console.py
-index 9d01734..d38d480 100644
+index 9d01734..9f127ab 100644
 --- a/explorer4/rosmaster_console.py
 +++ b/explorer4/rosmaster_console.py
-@@ -186,10 +186,17 @@ def telemetry(health,mode,notice):
+@@ -186,10 +186,18 @@ def telemetry(health,mode,notice):
          'log':(s.get('logs',[])+([operator.error] if operator.error else [])+([notice] if notice else []))[-14:]}
  
  
@@ -419,7 +515,8 @@ index 9d01734..d38d480 100644
 +    nonce=value.get('homebrain_request')
 +    if isinstance(nonce,str) and len(nonce)==32 and all(character in '0123456789abcdef' for character in nonce):
 +        LAB_ACKS[nonce]={'operation_id':nonce,'action':action,'status':'rejected' if error else 'accepted',
-+                         'error':str(error) if error else None,'recording':recorder.status(),'at':time.time()}
++                         'error':str(error) if error else None,'recording':recorder.status(),'owner':owner,
++                         'generation':operator.generation,'at':time.time()}
 +        if len(LAB_ACKS)>512:LAB_ACKS.pop(next(iter(LAB_ACKS)))
      try:
 -        path=DATA/'logs/rosmaster-panel-actions.jsonl';path.parent.mkdir(parents=True,exist_ok=True)
@@ -427,12 +524,115 @@ index 9d01734..d38d480 100644
          record={'at':time.time(),'tab':owner[:8],'action':action,'error':f'{type(error).__name__}: {error}' if error else None,
                  'value':{k:v for k,v in value.items() if k in ('profile','mode','on','joint','which','outcome','plan','study')}}
          with path.open('a') as output:output.write(json.dumps(record,ensure_ascii=False)+'\n')
+@@ -217,6 +225,7 @@ async def websocket(socket:WebSocket):
+                         health=response.json()
+                         payload=telemetry(health,state['mode'],state['notice'])
+                 except Exception as exc:payload=telemetry({},state['mode'],'Нет связи: '+str(exc))
++                payload.update(owner=owner, homebrain_generation=operator.generation)
+                 await socket.send_json(payload)
+                 await asyncio.sleep(.1)
+         finally:
+@@ -224,6 +233,8 @@ async def websocket(socket:WebSocket):
+     action_lock=asyncio.Lock();pending=[]
+     async def act(action,value):
+         try:
++            from .lab_ros_guard import generation as captured_generation
++            request_generation=captured_generation(operator,owner,action,value) if action in HARDWARE_ACTIONS else operator.generation
+             if (recorder.active() and (recorder.plan or {}).get('kind')=='conditioned_grasp' and
+                 action not in {'stop','emergency','record_finish','grasp_outcome'}):
+                 raise PermissionError('Идёт одиночная проба. Сначала нажмите STOP')
+@@ -246,7 +257,7 @@ async def websocket(socket:WebSocket):
+                 await asyncio.to_thread(request,'/preset',{'lease':operator.lease,'name':'up'})
+                 state['notice']='Рука выпрямляется'
+             elif action in ('enable','prepare'):
+-                generation=operator.generation
++                generation=request_generation
+                 profile='prepare' if action=='prepare' else value.get('profile','rosmaster_manual')
+                 if profile not in {'prepare','rosmaster_manual','rosmaster_dock','rosmaster_pick_place'}:raise ValueError('Неизвестный режим управления')
+                 # Connect automatically: start the inert agent and take serial/camera if needed.
+@@ -255,14 +266,14 @@ async def websocket(socket:WebSocket):
+                     state['notice']='Подключение ROSMASTER…'
+                     await asyncio.to_thread(request,'/acquire',{},45)
+                 if generation!=operator.generation:raise RuntimeError('Включение отменено кнопкой STOP; нажмите «Включить» заново')
+-                result=await asyncio.to_thread(operator.enable,owner,profile,state['mode'],value.get('observing') is True)
++                result=await asyncio.to_thread(operator.enable,owner,profile,state['mode'],value.get('observing') is True, expected_generation=generation)
+                 state['notice']='Управление уже включено: двигайте клавишами (окно должно быть в фокусе)' if result=='already' else ''
+             elif action in ('record_start','trial_start'):
+                 from .data_safety import require_space
+                 require_space()
+                 if recorder.active():raise RuntimeError('Сначала закончите текущую запись')
+                 plan=None
+-                generation=operator.generation
++                generation=request_generation
+                 if action=='trial_start':
+                     from . import trials
+                     plan=trials.load(str(value.get('plan','')))
+@@ -292,7 +303,7 @@ async def websocket(socket:WebSocket):
+                     if operator.lease:await asyncio.to_thread(operator.stop,'Переключение на задачу '+name)
+                     health=await asyncio.to_thread(lambda:(ensure_agent(),request('/health'))[1])
+                     if not health.get('hardware_open'):await asyncio.to_thread(request,'/acquire',{},45)
+-                    await asyncio.to_thread(operator.enable,owner,motor_profile,state['mode'],value.get('observing') is True,source)
++                    await asyncio.to_thread(operator.enable,owner,motor_profile,state['mode'],value.get('observing') is True,source, expected_generation=generation)
+                 recorder.start(owner,name,str(value.get('scene','scene-01'))[:60],
+                                'correction' if value.get('category')=='correction' else 'demonstration',
+                                str(value.get('collection') or time.strftime('%Y-%m-%d')+'-'+name)[:80],plan=plan,study=study)
+@@ -362,7 +373,7 @@ async def websocket(socket:WebSocket):
+                         # Same motor profile as the recording task (arm only), so «Начать запись» keeps this
+                         # session and the mirror instead of restarting control (that dropped the mirror).
+                         prof=value.get('profile') if value.get('profile') in ('rosmaster_pick_place','rosmaster_manual') else 'rosmaster_manual'
+-                        await asyncio.to_thread(operator.enable,owner,prof,state['mode'],True)
++                        await asyncio.to_thread(operator.enable,owner,prof,state['mode'],True, expected_generation=request_generation)
+                     if operator.leader_sample is None or time.monotonic()-operator.leader_sample[0]>.2:
+                         await asyncio.to_thread(operator.start_leader,owner)
+                         end=time.monotonic()+5
+diff --git a/explorer4/rosmaster_session.py b/explorer4/rosmaster_session.py
+index 6b77daf..c628924 100644
+--- a/explorer4/rosmaster_session.py
++++ b/explorer4/rosmaster_session.py
+@@ -202,7 +202,8 @@ class RosmasterSession:
+         self.study = study
+         with self.lock:
+             self.state = {'phase': 'preparing', 'frames': 0, 'error': None, 'profile': name, 'episode': None,
+-                          'hz': None, 'category': category, 'scene': scene, 'pilot': None}
++                          'hz': None, 'category': category, 'scene': scene, 'pilot': None,
++                          'native_owner':owner,'native_collection':collection}
+         self.thread = threading.Thread(target=self.run, args=(owner, name, scene, category, collection, check),
+                                        daemon=True)
+         self.thread.start()
+diff --git a/explorer4/session.py b/explorer4/session.py
+index 56e627e..97d2348 100644
+--- a/explorer4/session.py
++++ b/explorer4/session.py
+@@ -29,6 +29,7 @@ class Session:
+         self.pilot=None
+         self.study=None
+         self.last_episode_id=None
++        self.homebrain_episode_id=None
+ 
+     autonomous=False      # the swarm drives (owner 'swarm'): Tank's own obstacle stop applies
+ 
+@@ -63,6 +64,7 @@ class Session:
+         self.scene=scene
+         self.record_requested=record
+         self.phase='preparing'
++        self.homebrain_episode_id=None
+         self.thread=threading.Thread(target=self._run,args=(name,collection_id or session_id,scene),daemon=True)
+         self.thread.start()
+ 
+@@ -116,6 +118,7 @@ class Session:
+                         category='correction' if command_source=='human' else 'rollout')
+             elif self.record_requested:
+                 writer=EpisodeWriter(name,session_id,scene,category='rollout' if self.trial_plan else self.category)
++                self.homebrain_episode_id=writer.id
+             if self.trial_plan:
+                 from .trials import require_physical,ReplayActions,PolicyActions
+                 require_physical(self.trial_plan)
 diff --git a/tests/test_lab_api.py b/tests/test_lab_api.py
 new file mode 100644
-index 0000000..ea45e3a
+index 0000000..37631b5
 --- /dev/null
 +++ b/tests/test_lab_api.py
-@@ -0,0 +1,124 @@
+@@ -0,0 +1,188 @@
 +import asyncio
 +import json
 +import threading
@@ -557,3 +757,67 @@ index 0000000..ea45e3a
 +    assert accepted.headers['X-Frame-Age-Ms'] == '11.0'
 +    with pytest.raises(ValueError):
 +        response(packet,'tank',600)
++
++
++def test_ros_generation_and_input_fence_reject_delayed_enable_and_start():
++    from explorer4.lab_ros_guard import generation
++    control = SimpleNamespace(generation=3,lock=threading.RLock(),inputs={'owner':(time.monotonic(),{})},owner=None,lease=None)
++    packet = {'homebrain_request':'a'*32,'expected_generation':2}
++    with pytest.raises(PermissionError):
++        generation(control,'owner','enable',packet)
++    packet['expected_generation'] = 3
++    assert generation(control,'owner','enable',packet) == 3
++    with pytest.raises(PermissionError):
++        generation(control,'owner','record_start',packet)
++    control.owner,control.lease='owner','native-lease'
++    assert generation(control,'owner','record_start',packet) == 3
++    control.inputs.clear()
++    with pytest.raises(PermissionError):
++        generation(control,'owner','record_start',packet)
++
++
++def test_new_transport_denies_lan_http_and_websocket_before_native_effect():
++    from explorer4.lab_local import LocalBoundary
++    calls=[]
++    async def native(scope, receive, send):
++        calls.append('native')
++    async def receive():
++        return {'type':'http.request','body':b''}
++    async def exercise():
++        packets=[]
++        async def send(packet):
++            packets.append(packet)
++        guard=LocalBoundary(native)
++        await guard({'type':'http','path':'/api/lab/record/start','client':('192.0.2.2',123)},receive,send)
++        await guard({'type':'websocket','path':'/api/lab/control','client':('192.0.2.2',123)},receive,send)
++        await guard({'type':'http','path':'/api/lab/status','client':('127.0.0.1',123)},receive,send)
++        return packets
++    packets=asyncio.run(exercise())
++    assert packets[0]['status']==403 and packets[-1]['code']==4403
++    assert calls==['native']
++
++
++def test_assisted_exclusion_cannot_modify_another_native_collection(tmp_path,monkeypatch):
++    import sqlite3
++    from fastapi import FastAPI
++    from fastapi.testclient import TestClient
++    from explorer4 import lab_collection
++    path=tmp_path/'catalog.sqlite'
++    def connect():
++        db=sqlite3.connect(path)
++        db.row_factory=sqlite3.Row
++        return db
++    with connect() as db:
++        db.execute('CREATE TABLE collection_series(id TEXT,operator TEXT,description TEXT)')
++        db.executemany('INSERT INTO collection_series VALUES(?,?,?)',[
++            ('ours','Homebrain Lab','Homebrain Lab development / placement'),('foreign','other','Other collection')])
++    calls=[]
++    monkeypatch.setattr(lab_collection.catalog,'connect',connect)
++    monkeypatch.setattr(lab_collection,'quality',lambda identifier:{'attempt':{'series':'ours'}})
++    monkeypatch.setattr(lab_collection.collection,'exclude',lambda identifier:calls.append(identifier))
++    app=FastAPI()
++    lab_collection.install_exclusion(app)
++    client=TestClient(app)
++    assert client.post('/api/lab/quality/episode/exclude',json={'collection_id':'foreign'}).status_code==403
++    assert client.post('/api/lab/quality/episode/exclude',json={'collection_id':'ours'}).json()['raw_retained']
++    assert calls==['episode']

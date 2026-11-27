@@ -72,16 +72,16 @@ class Store:
             for offset in range(0,len(content),2200):
                 db.execute("INSERT INTO documents VALUES(?,?,?,?,?)", (content[offset:offset+2600],str(path),digest,revision,time.time()))
 
-    def search(self, query):
+    def search(self, query, prefix=None):
         terms = [t for t in re.findall(r"[A-Za-z0-9_]{3,}",query) if t.lower() not in STOP_WORDS][:10]
         match = " OR ".join('"'+t+'"' for t in terms)
         with self.db() as db:
-            rows = db.execute("SELECT *,bm25(documents) rank FROM documents WHERE documents MATCH ? ORDER BY rank LIMIT 20", (match,)).fetchall() if match else []
+            rows = db.execute("SELECT *,bm25(documents) rank FROM documents WHERE documents MATCH ? AND (? IS NULL OR path LIKE ?) ORDER BY rank LIMIT 20", (match,prefix,(prefix or '')+'/%')).fetchall() if match else []
         result = {}
         for row in rows:
             if row["path"] not in result:
                 result[row["path"]] = dict(row)
         return list(result.values())[:4]
 
-    def retrieve(self, query, mode="lexical"):
-        return self.hybrid.search(query) if mode=="hybrid" and self.hybrid else self.search(query)
+    def retrieve(self, query, mode="lexical", prefix=None):
+        return self.hybrid.search(query) if mode=="hybrid" and self.hybrid and not prefix else self.search(query,prefix)

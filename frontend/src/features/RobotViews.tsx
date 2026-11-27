@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ControllerReadings } from './ControllerReadings';
 import { Simulation } from './Simulation';
 import { api, lab } from '@/lib/api';
 
@@ -27,6 +28,12 @@ function Capability({robot, capability}: any) {
     <h2>{robot.toUpperCase()}</h2><p>Choose a recording task in Projects to prepare and explicitly enable this robot.</p>
     <p>Inputs: {capability?.inputs.join(' · ')}</p><p>Recorder: {capability?.recorders.join(' · ')}</p>
     <p className="muted">Unsupported: {capability?.unsupported.join(' · ')}</p>
+    <details><summary>Advanced native recovery consoles</summary>
+      <p><a href="http://homebrain.local:8020" target="_blank" rel="noreferrer">Studio native console</a> ·{' '}
+        <a href="http://homebrain.local:8030" target="_blank" rel="noreferrer">Explorer native console</a> ·{' '}
+        <a href="http://homebrain.local:8030/fleet/live" target="_blank" rel="noreferrer">Native ROS2 observations</a></p>
+      <p>These are the existing local network services with their original access checks.</p>
+    </details>
   </Card>;
 }
 
@@ -45,11 +52,15 @@ function Sensors({robot, capability}: any) {
     <p>{robot === 'tank' ? 'Tank state is a previous command estimate. Wheel odometry is unavailable.' :
       'Measured feedback and command targets retain their native meanings.'}</p>
     <p>MuJoCo geometry: existing native CAD/model. Dynamics: simulated and uncalibrated.</p>
+    <details><summary>Configured native profile parameters</summary>
+      <p>These settings are configured by the native owner; they are not measured physical/model calibration.</p>
+      <pre>{JSON.stringify(capability?.sensors || [], null, 2)}</pre>
+    </details>
   </Card><Card className="settings-card"><h2>Namespaced ROS2 observations</h2>
     <p>Read-only · domain 73 · native source clocks · no motor commands</p>
     {observed ? <SensorTable observed={observed}/> : <p>{hub?.error || 'No namespaced observation is currently available for this robot.'}</p>}
     <details><summary>Native diagnostics</summary><pre>{JSON.stringify(hub, null, 2)}</pre></details>
-  </Card></div>;
+  </Card><ControllerReadings readback={hub?.controller_readbacks?.[robot]}/></div>;
 }
 
 function SensorTable({observed}: any) {

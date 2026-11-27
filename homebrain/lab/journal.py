@@ -75,7 +75,8 @@ class Journal:
     def unresolved(self):
         with self.db() as db:
             rows = db.execute("SELECT * FROM operations WHERE state IN ('pending','unknown') ORDER BY created").fetchall()
-        return [dict(row) for row in rows]
+        return [dict(row) for row in rows
+                if not row['result'] or not json.loads(row['result']).get('native_acknowledgement', {}).get('reconciled')]
 
     def event(self, session, kind, revision, payload):
         with self.db() as db:
@@ -98,3 +99,10 @@ class Journal:
         with self.db() as db:
             rows = db.execute("SELECT result FROM operations WHERE session_id=? AND result IS NOT NULL ORDER BY created DESC LIMIT 10", (session,)).fetchall()
         return [json.loads(row[0]) for row in rows]
+
+    def jobs(self):
+        with self.db() as db:
+            rows = db.execute("SELECT id,state,created,request,result FROM operations WHERE action='submit_job' ORDER BY created DESC LIMIT 20").fetchall()
+        return [{'operation_id':row['id'],'status':row['state'],'created':row['created'],
+                 'recipe_id':json.loads(row['request'])['arguments'].get('recipe_id'),
+                 'result':json.loads(row['result']) if row['result'] else None} for row in rows]

@@ -19,7 +19,10 @@ def sources(root):
 
 def revision(root):
     result = subprocess.run(['git', '-C', str(root), 'rev-parse', 'HEAD'], capture_output=True, text=True, timeout=5)
-    return result.stdout.strip() if result.returncode == 0 else 'unversioned-approved-source'
+    if result.returncode != 0:
+        return 'unversioned-approved-source'
+    dirty = subprocess.run(['git','-C',str(root),'status','--porcelain','--untracked-files=no'],capture_output=True,timeout=5)
+    return result.stdout.strip()+('; modified working tree' if dirty.stdout else '')
 
 
 def index_root(store, root):
@@ -30,8 +33,12 @@ def index_root(store, root):
         indexed = {row['path']: row['hash'] for row in db.execute('SELECT path,hash FROM documents WHERE path LIKE ?', (str(root)+'/%',))}
         for path in set(indexed)-active:
             db.execute('DELETE FROM documents WHERE path=?', (path,))
+    from .memory_context import invalidate_source
+    for path in set(indexed)-active:
+        invalidate_source(store,path,'deleted')
     for path in paths:
         digest = hashlib.sha256(path.read_text(errors='replace')[:100000].encode()).hexdigest()
         if indexed.get(str(path)) != digest:
+            invalidate_source(store,path,commit,digest)
             store.index(path, commit+'; file_sha256='+digest)
     return len(paths)

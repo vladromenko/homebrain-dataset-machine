@@ -75,7 +75,10 @@ export function useAction(session: Session | null, setSession: (value: Session |
       const result = await api(`${lab}/actions`, {
         action, project_id: current.project_id, session_id: current.session_id,
         target_id: current.task_id, expected_revision: current.revision,
-        idempotency_key: crypto.randomUUID(), arguments: args,
+        idempotency_key: crypto.randomUUID(), arguments: { ...args,
+          ...(['enable_control', 'start_recording'].includes(action)
+            ? { expected_native_generation: current.readiness.native_stop_generation } : {}),
+        },
       });
       if (['rejected', 'unknown'].includes(result.status)) setError(result.message);
       setSession(await api(`${lab}/sessions/${session.session_id}`));
@@ -86,4 +89,18 @@ export function useAction(session: Session | null, setSession: (value: Session |
     finally { pending.current = false; setBusy(false); }
   }
   return { act, busy };
+}
+
+export function useTaskCard(session: Session | null) {
+  const [task, setTask] = useState<Task | undefined>();
+  useEffect(() => {
+    setTask(undefined);
+    let active = true;
+    if (session) {
+      const query = new URLSearchParams({project_id: session.project_id, task_id: session.task_id});
+      api<Task>(`${lab}/task-card?${query}`).then(card => {if (active) setTask(card);}).catch(() => {});
+    }
+    return () => {active = false;};
+  }, [session?.session_id]);
+  return task;
 }

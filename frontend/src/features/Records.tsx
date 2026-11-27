@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api, lab } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ProjectJobs } from './ProjectJobs';
+import { ObservationCapture } from './ObservationCapture';
 import { ReplayCatalog } from './ReplayViewer';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,8 +20,8 @@ export function Records({kind, overview}: any) {
     <h1>{kind === 'Jobs' ? 'Exports, training & evaluation' : 'Recordings & evidence'}</h1>
     <p className="muted">Native identifiers and artifacts stay in their original stores.</p>
     {error && <p role="alert">{error}</p>}
-    {kind === 'Jobs' ? <Jobs jobs={jobs}/> : <>
-      <Datasets datasets={studio.datasets || []}/><ExplorerEpisodes episodes={explorer.episodes || []}/><ReplayCatalog/>
+    {kind === 'Jobs' ? <><Jobs jobs={jobs}/><ProjectJobs/></> : <>
+      <Datasets datasets={studio.datasets || []}/><ExplorerEpisodes episodes={explorer.episodes || []}/><ObservationCapture/><ReplayCatalog/>
     </>}
   </div>;
 }
@@ -72,7 +74,14 @@ function ExplorerEpisodes({episodes}: any) {
   return <><div className="list-heading"><h2>Explorer episodes</h2><span>Raw save ≠ admission</span></div>
     <div className="task-list">{episodes.slice(0, 30).map((row: any) => <Card className="task-row" key={row.id}>
       <div><h3>{row.profile}</h3><p>{row.id} · {row.frames} frames · {row.category}</p></div>
+      <Badge variant="outline">{episodeDomain(row.profile)}</Badge>
       <Badge variant="secondary">{row.outcome || 'unknown'}</Badge>
     </Card>)}</div>
   </>;
+}
+
+function episodeDomain(profile: string) {
+  if (profile?.endsWith('_sim')) return 'SIMULATION';
+  if (/^(so101_pick_place|tank_dock|rosmaster_dock|rosmaster_pick_place)(_rgbd_lidar)?$/.test(profile)) return 'PHYSICAL';
+  return 'NATIVE · DOMAIN UNKNOWN';
 }

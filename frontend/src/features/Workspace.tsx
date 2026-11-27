@@ -34,7 +34,7 @@ export function Workspace({ session, task, control, busy, onAction }: any) {
     <RecordingStatus session={session}/><CameraGrid session={session} task={task}/>
     <div className="workspace-bottom"><Setup task={task}/><ControlCard session={session} control={control}/></div>
     {session.project_id === 'smart-swarm' ? <>
-      <Button variant="outline" disabled={busy || !control.connected || !!session.recording.active}
+      <Button variant="outline" disabled={busy || !control.connected || !!session.recording.active || !!session.pending_work.length}
         onClick={() => onAction('enable_control', {})}>Enable native control</Button>
       <ProjectAction session={session} busy={busy} onAction={onAction}/>
     </> : <Actions key={session.session_id} session={session} busy={busy} onAction={onAction}/>}
@@ -112,7 +112,7 @@ function ViewpointReview({session, onAction, busy}: any) {
   const [checked, setChecked] = useState(false);
   const geometry = session.project_state.overview_geometry || {};
   if (!geometry.requires_recheck || geometry.generic_reviewed_revision === geometry.revision) return null;
-  return <Card className="settings-card"><h3>Camera viewpoint changed</h3>
+  return <Card className="settings-card"><h3>Workspace references need recheck</h3>
     <p>Spatial assumptions were invalidated. Keep pickup, release, target and fixed references visible.</p>
     {session.project_id === 'smart-swarm' ? <p>Finish and retain an interrupted attempt, then capture and confirm the station again.</p> : <>
       <label><input type="checkbox" checked={checked} onChange={event => setChecked(event.target.checked)}/>

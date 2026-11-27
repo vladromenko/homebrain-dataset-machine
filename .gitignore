@@ -6,6 +6,7 @@ __pycache__/
 config.local.json
 access-url.txt
 adapters.local/
+adapters.local
 *.gguf
 *.onnx
 *.wav
@@ -20,3 +21,5 @@ config.dev.json
 
 *.tsbuildinfo
 frontend/node_modules
+
+runtime-*/

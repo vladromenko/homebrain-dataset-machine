@@ -51,7 +51,7 @@ def model_args(config):
     args = [str(binary),"-m",str(work/"models"/config["model"]/"model.gguf"),
             "--host","127.0.0.1","--port",str(config["model_port"]),"-c",str(config["context"]),
             "-t",str(config["threads"]),"-ngl",str(config["gpu_layers"]),"-np","1","--jinja",
-            "-b","64","-ub","64","--cache-ram","0","--repack","--load-mode","none","--sleep-idle-seconds","30"]
+            "-b","64","-ub","64","--cache-ram","0","--repack" if config.get("model_repack",True) else "--no-repack","--load-mode",config.get("model_load_mode","none"),"--sleep-idle-seconds","30"]
     if config["model"] == "gemma":
         args += ["--mmproj",str(work/"models/gemma/mmproj.gguf"),"--no-mmproj-offload"]
     return args

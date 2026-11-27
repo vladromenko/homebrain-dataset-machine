@@ -53,6 +53,7 @@ governor.lab = lab
 lab.controls = Controls(lab)
 agent_runtime = Runtime(config,store,lab,TOKEN)
 agent_runtime.perception = supervisor.perception
+agent_runtime.source_roots = {name:adapter.spec['approved_roots'][0] for name,adapter in adapters.items()}
 microphones.approved = set(store.state("microphone_approved",[]))
 local_voice = LocalVoice(audio,microphones,agent_runtime,store,media_lock)
 lab.memory_store = store
@@ -136,7 +137,7 @@ async def monitor_events():
                 from .memory_context import invalidate_device
                 invalidate_device(store,config['camera_id'],'Camera viewpoint changed')
                 lab.journal.profile('camera_geometry',{'requires_recheck':True,'revision':revision})
-                guidance = 'The C920 viewpoint changed. '+status['scene'].get('guidance','Keep the pickup, release and fixed reference areas fully visible, then recheck the workspace.')
+                guidance = 'The C920 workspace references require recheck. '+status['scene'].get('guidance','Keep the pickup, release and fixed reference areas fully visible, then recheck the workspace.')
                 events.emit('viewpoint_changed',guidance,1)
                 local_voice.announce(guidance)
             if status["scene"].get("quality",{}).get("dark"):
@@ -340,7 +341,7 @@ async def microphone_capture():
 
 def capture_and_transcribe():
     data = audio.capture(microphones,8)
-    return audio.transcribe(data)
+    return {**audio.transcribe(data),'input_provenance':audio.last_capture}
 
 
 async def audio_task(function, *args):
@@ -391,6 +392,15 @@ def source(path:str):
     if record is None:
         raise HTTPException(404,"Source is not in the approved knowledge index")
     return {**dict(record),"text":file.read_text(errors="replace")[:100000],"scope":"approved operator knowledge; never a scientific policy feed"}
+
+
+@app.get('/api/lab/v1/memory')
+def memory_evidence():
+    from .memory_context import initialize
+    initialize(store)
+    with store.db() as db:
+        rows = db.execute('SELECT m.*,e.* FROM memory m LEFT JOIN memory_evidence e ON e.memory_id=m.id ORDER BY m.id DESC LIMIT 100').fetchall()
+    return [dict(row) for row in rows]
 
 
 @app.get("/api/memory")

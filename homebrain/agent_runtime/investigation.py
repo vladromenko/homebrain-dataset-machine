@@ -37,5 +37,6 @@ async def check(runtime, name):
         raise PermissionError('Unknown isolated check')
     argv = [str(ROOT/'.venv/bin/python'), '-m', 'pytest', '-q', *CHECKS[name]]
     result = await asyncio.to_thread(subprocess.run, argv, cwd=folder, capture_output=True, text=True, timeout=25)
-    return {'check':name, 'checkout':str(folder), 'returncode':result.returncode,
+    revision = subprocess.check_output(['git','-C',str(folder),'rev-parse','HEAD'],text=True,timeout=5).strip()
+    return {'check':name, 'source_commit':revision, 'checkout':str(folder), 'returncode':result.returncode,
             'output':(result.stdout+result.stderr)[-5000:], 'scope':'isolated synthetic checks; no physical qualification'}

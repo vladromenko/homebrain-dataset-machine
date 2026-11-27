@@ -31,7 +31,7 @@ A raw save, technical integrity, successful unassisted motor demonstration and a
 | Existing SO101 Studio and Explorer | Original controllers, leader mappings, watchdogs, STOP, LeRobot writers/exporters and validation. Additive adapters do not instantiate another recorder or hardware owner. |
 | Native ROS2 / MCAP and Rerun 0.44 | Namespaced sensor observations and a locally served replay/3D viewer. RRD is a derived diagnostic view; original MCAP stays in its native store. Unknown world transforms remain unknown. |
 | Existing individual/shared MuJoCo workers | Original CAD/models, simulation ownership and supported controls. Simulation namespaces and datasets remain distinct from physical robots; dynamics are not hardware calibrated. |
-| OpenCode V2 2.4.2 + llama.cpp + Qwen CPU | Real local model/tool loops, bounded roles and server-issued specialist sessions sharing one model pool. Shell/edit/web permissions are denied. No cloud model is required. |
+| OpenCode V2 2.4.2 + llama.cpp + Qwen3-4B CPU | Real local model/tool loops, bounded roles and server-issued specialist sessions sharing one model pool. Shell/edit/web permissions are denied. No cloud model is required. |
 | SQLite FTS5 + incremental approved-source indexing | Revision/hash-bearing repository evidence and scoped memory retrieval; changed/deleted files update the index. Credentials and raw datasets are excluded. |
 | faster-whisper tiny.en int8, VAD, Piper | Local English push-to-talk, robotics vocabulary hints and spoken responses in the Mac browser or an explicitly selected local output. Server voice mode is opt-in and half duplex. |
 | Linux udev, sysfs, ALSA, V4L2 | Persistent USB video/audio identities, physical USB parent association, ownership checks, discovery, fallback input and reconnect recovery. |
@@ -58,6 +58,8 @@ Camera movement invalidates dependent geometry and triggers English guidance and
 - USB recovery reopens only the previously authorized camera identity at an idle native boundary. It does not resume recording or control.
 - Idle / Recording / Training resource profiles retain the existing 8 GiB available-memory reservation. Conversational inference during physical recording remains gated until an attended recording-under-assistant-load qualification passes. Optional indexing, visual inference, replay derivation and checks yield first.
 - Raw datasets remain in their native locations. Shared catalogs contain references and receipts. There is no bulk migration or new raw dataset format.
+
+The full task latency measurements, failed comparisons and model provenance are in [local models and resources](docs/MODELS_AND_RESOURCES.md).
 
 See [acceptance status](docs/ACCEPTANCE.md) for the difference between implemented paths, native read-only checks, replay/synthetic tests and physical checks still awaiting an operator.
 
@@ -88,6 +90,8 @@ npm run build --prefix frontend
 .venv/bin/python -m pytest -q
 node --check homebrain/static/app.js
 ```
+
+For a separate developer installation, `scripts/install.py --work /absolute/private/work` verifies the pinned model assets, builds the pinned CPU runtime and installs the locked OpenCode packages in that private directory. Configure the native station profiles before starting the service. The deployed workstation already has these dependencies; operators use the Homebrain icon.
 
 Linux OpenCV/NumPy and the installed native robotics environments are prerequisites on the Jetson. Do not upgrade the OS, JetPack or native environments to install this UI. Apply only the reviewed matching-baseline native adapter patches at an idle boundary; [deployment instructions](docs/DEPLOYMENT.md) describe verification and rollback.
 

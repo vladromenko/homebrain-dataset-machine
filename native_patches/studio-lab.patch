@@ -1,5 +1,5 @@
 diff --git a/src/so101_lab/app.py b/src/so101_lab/app.py
-index 804b5ff..39fe854 100644
+index 804b5ff..a112475 100644
 --- a/src/so101_lab/app.py
 +++ b/src/so101_lab/app.py
 @@ -1,6 +1,7 @@
@@ -83,12 +83,14 @@ index 804b5ff..39fe854 100644
      except Exception as e:raise HTTPException(409,str(e))
  @app.get('/api/frame/{camera}')
  def frame(camera:str):
-@@ -355,3 +375,8 @@ async def websocket(ws:WebSocket):
+@@ -355,3 +375,10 @@ async def websocket(ws:WebSocket):
  @app.get('/')
  def index():return FileResponse(ROOT/'static/index.html',headers={'Cache-Control':'no-store'})
  app.mount('/static',StaticFiles(directory=ROOT/'static'),name='static')
 +
 +lab_lease.install(app,lambda:manager.status() if manager else {},lambda:teleoperation.status() if teleoperation else {},request_hardware_stop)
++from .lab_finish import install as install_lab_finish
++install_lab_finish(app,lambda:manager.status(),lambda action:manager.command(action),hardware_control_lock)
 +
 +from .lab_status import install as install_lab_status
 +install_lab_status(app,lambda:manager,lambda:teleoperation,lambda:camera_preview,lambda:hardware_stop_generation)
@@ -133,6 +135,38 @@ index 0000000..c7b6f6b
 +        except (OSError, RuntimeError, ValueError):
 +            pass
 +        await asyncio.sleep(2)
+diff --git a/src/so101_lab/lab_finish.py b/src/so101_lab/lab_finish.py
+new file mode 100644
+index 0000000..87651df
+--- /dev/null
++++ b/src/so101_lab/lab_finish.py
+@@ -0,0 +1,26 @@
++"""Atomic native-session fence; the original native writer remains authoritative."""
++from fastapi import HTTPException
++from pydantic import BaseModel, ConfigDict, Field
++from . import lab_lease
++
++
++class Finish(BaseModel):
++    model_config = ConfigDict(extra='forbid')
++    dataset_id: str = Field(min_length=1,max_length=128)
++    session_id: str = Field(min_length=1,max_length=128)
++
++
++def install(app, status, command, lock):
++    @app.post('/api/lab/record/finish')
++    def finish(body: Finish):
++        with lock:
++            current = status()
++            if any(current.get(key)!=getattr(body,key) for key in ('dataset_id','session_id')):
++                raise HTTPException(409,'Native recording ownership changed; no other recording was ended')
++            if current.get('state')=='saving':
++                return current
++            if not current.get('active'):
++                raise HTTPException(409,'Selected native recording is no longer active; inspect its saved receipt')
++            result = command('end')
++            lab_lease.finish()
++            return result
 diff --git a/src/so101_lab/lab_lease.py b/src/so101_lab/lab_lease.py
 new file mode 100644
 index 0000000..bd389d0
@@ -261,12 +295,36 @@ index 0000000..bd389d0
 +        result = stop()
 +        activate(None)
 +        return {'requested':True, 'native':result}
+diff --git a/src/so101_lab/lab_local.py b/src/so101_lab/lab_local.py
+new file mode 100644
+index 0000000..6d2257e
+--- /dev/null
++++ b/src/so101_lab/lab_local.py
+@@ -0,0 +1,18 @@
++"""New Homebrain transport stays loopback-only behind its authenticated app."""
++from starlette.responses import JSONResponse
++
++
++class LocalBoundary:
++    def __init__(self, app):
++        self.app = app
++
++    async def __call__(self, scope, receive, send):
++        client = scope.get('client') or ('',0)
++        internal = scope.get('path','').startswith('/api/lab/')
++        if internal and client[0] not in ('127.0.0.1','::1'):
++            if scope['type'] == 'websocket':
++                await send({'type':'websocket.close','code':4403})
++            else:
++                await JSONResponse({'detail':'Use the authenticated Homebrain app'},403)(scope,receive,send)
++        else:
++            await self.app(scope,receive,send)
 diff --git a/src/so101_lab/lab_status.py b/src/so101_lab/lab_status.py
 new file mode 100644
-index 0000000..43c0a0f
+index 0000000..7abaaf8
 --- /dev/null
 +++ b/src/so101_lab/lab_status.py
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,41 @@
 +"""Cheap shared-stream status; dataset/job catalogs remain explicit reads."""
 +import json
 +from fastapi import HTTPException
@@ -274,6 +332,8 @@ index 0000000..43c0a0f
 +
 +
 +def install(app, manager, teleoperation, preview, generation):
++    from .lab_local import LocalBoundary
++    app.add_middleware(LocalBoundary)
 +    @app.get('/api/lab/status')
 +    def status():
 +        return {'hardware_stop_generation':generation(), 'resources':{'inspection':'Run native preflight when preparing'},
@@ -338,6 +398,40 @@ index 0000000..ffc3241
 +    assert recover(preview, {'active':True}, {}) == []
 +    preview.borrowers.add('native-recorder')
 +    assert recover(preview, {}, {}) == []
+diff --git a/tests/test_lab_finish.py b/tests/test_lab_finish.py
+new file mode 100644
+index 0000000..76c0cf5
+--- /dev/null
++++ b/tests/test_lab_finish.py
+@@ -0,0 +1,28 @@
++"""A delayed Homebrain Finish cannot end a new native owner's recording."""
++import threading
++from fastapi import FastAPI
++from fastapi.testclient import TestClient
++from so101_lab.lab_finish import install
++
++
++def test_finish_binding_is_checked_inside_native_lock():
++    lock = threading.RLock()
++    effects = []
++    current = {'active':True,'state':'recording','dataset_id':'new-dataset','session_id':'new-session'}
++    def status():
++        assert lock._is_owned()
++        return current
++    def command(action):
++        assert lock._is_owned()
++        effects.append(action)
++        return {'state':'saving'}
++    app = FastAPI()
++    install(app,status,command,lock)
++    with TestClient(app) as client:
++        stale = client.post('/api/lab/record/finish',json={'dataset_id':'old-dataset','session_id':'old-session'})
++        assert stale.status_code==409 and effects==[]
++        own = client.post('/api/lab/record/finish',json={'dataset_id':'new-dataset','session_id':'new-session'})
++        assert own.status_code==200 and effects==['end']
++        current['state']='saving'
++        repeated = client.post('/api/lab/record/finish',json={'dataset_id':'new-dataset','session_id':'new-session'})
++        assert repeated.status_code==200 and effects==['end']
 diff --git a/tests/test_lab_lease.py b/tests/test_lab_lease.py
 new file mode 100644
 index 0000000..15fc3dc

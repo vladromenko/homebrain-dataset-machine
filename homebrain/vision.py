@@ -62,6 +62,8 @@ class Vision:
                     foreign = await asyncio.to_thread(owners,self.config["camera_id"])
                     import os
                     foreign = [pid for pid in foreign if pid != os.getpid()]
+                    if foreign and not self.config.get('camera_shared_url'):
+                        raise OSError('Camera owned by another application; waiting for an authorized shared stream')
                     image = await self.shared() if self.config.get("camera_shared_url") or foreign else await asyncio.to_thread(self.direct)
                     self.accept(image,self.config["camera_id"])
             except (OSError,ValueError,AttributeError,cv2.error,httpx.HTTPError) as error:

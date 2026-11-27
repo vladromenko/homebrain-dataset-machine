@@ -12,6 +12,7 @@ class Controls:
     def __init__(self, lab):
         self.lab = lab
         self.connections = {}
+        self.latest = {}
         self.leases = NativeLeases()
 
     def require(self, session):
@@ -22,11 +23,11 @@ class Controls:
 
     async def open(self, socket, session):
         identifier = session["session_id"]
-        if identifier in self.connections or any(item['robot_id'] == session['robot_id'] for item in self.connections.values()):
+        if self.connections:
             await socket.close(code=4409, reason="Another browser owns this control connection")
             return
         await socket.accept()
-        entry = {"last_packet": time.monotonic(), "native": None, "state": {}, "owner": None, "owned": False, 'robot_id': session['robot_id']}
+        entry = {"last_packet": 0, "native": None, "state": {}, "owner": None, "owned": False, 'robot_id': session['robot_id']}
         self.connections[identifier] = entry
         try:
             if session["robot_id"] != "so101":
@@ -60,6 +61,9 @@ class Controls:
             payload = json.loads(raw)
             entry["state"] = payload.get("status", payload)
             entry["owner"] = payload.get("owner")
+            keys = ('sample','sample_age_ms','arm','arm_measured','battery','tcp','mode','enabled','phase')
+            self.latest[entry['robot_id']] = {'received_monotonic':time.monotonic(),
+                'data':{key:entry['state'][key] for key in keys if key in entry['state']}}
             await socket.send_json({"kind": "native_status", "data": entry["state"], "owner": entry["owner"]})
 
     async def browser(self, socket, session, entry):
@@ -87,9 +91,12 @@ class Controls:
             await downstream.send(json.dumps({'drive':[0,0,0],'arm':[0,0,0],'pitch':0,'roll':0,'grip':0,'slow':True}))
         elif packet['kind'] == 'native_action':
             action = packet.get('action')
-            if action not in ('arm_mode','leader','leader_off','mirror'):
+            if action not in ('arm_mode','leader','leader_off','mirror_on','mirror_off','preset'):
                 raise PermissionError('Unsupported direct native action')
-            allowed = {key:packet[key] for key in ('action','mode','on') if key in packet}
+            allowed = {key:packet[key] for key in ('action','mode','name') if key in packet}
+            if action in ('leader','mirror_on','preset'):
+                status = await self.lab.native.request('explorer','/api/lab/rosmaster/status')
+                allowed.update(homebrain_request=uuid.uuid4().hex,expected_generation=status['generation'])
             await downstream.send(json.dumps(allowed))
         elif packet["kind"] == "input":
             allowed = {key: packet[key] for key in ("drive", "arm", "pitch", "roll", "grip", "slow") if key in packet}
@@ -101,6 +108,10 @@ class Controls:
             raise ValueError("Native mobile connection is unavailable")
         nonce = uuid.uuid4().hex
         self.lab.journal.profile('ros-operation:'+session['session_id'], {'nonce':nonce,'action':packet['action']})
+        if packet['action'] in ('enable','record_start'):
+            observed = await self.lab.native.request('explorer','/api/lab/rosmaster/status')
+            from ..lab.fencing import expected
+            expected({'expected_native_generation':packet.get('expected_generation')}, observed['generation'])
         await entry["native"].send(json.dumps({**packet,'homebrain_request':nonce}))
         entry["owned"] = True
         started = time.monotonic()
@@ -129,7 +140,9 @@ class Controls:
             self.lab.journal.event(session['session_id'], 'stop_unconfirmed', 0, {'message':str(error)})
         entry['owned'] = False
 
-    async def record_permit(self, session, status, dataset):
+    async def record_permit(self, session, status, dataset, arguments):
+        from ..lab.fencing import expected
+        generation = expected(arguments, status['hardware_stop_generation'])
         if status['recording'].get('active'):
             raise PermissionError('An existing native recording must be reconciled first')
         if status['teleoperation'].get('active'):
@@ -137,7 +150,7 @@ class Controls:
             operation = (native.get('active') or {}).get('operation_id')
             if self.leases.entries.get(operation, {}).get('session_id') != session['session_id']:
                 raise PermissionError('The active native controller belongs to another session')
-        return self.permit(session, status['hardware_stop_generation'], dataset)
+        return self.permit(session, generation, dataset)
 
     def permit(self, session, generation, dataset=None):
         self.require(session)

@@ -15,6 +15,7 @@ class Inspect(BaseModel):
 
 
 def install(api, lab):
+    install_project_reads(api, lab)
     @api.get('/api/lab/v1/project-media/{project}/{relative:path}')
     def media(project: str, relative: str):
         registration=lab.swarm.registration()
@@ -48,6 +49,31 @@ def install(api, lab):
         snapshot = SessionSnapshot(session_id=uuid.uuid4().hex,project_id='demonstrations',task_id='so101-placement',
             robot_id='so101',domain='physical',state='needs_review',instruction='Inspect the selected native recording receipt. No control was enabled.',
             native_ids={'dataset_id':body.dataset_id,'episode_id':body.episode_id},
-            receipts=[{'source':'Studio native receipt','native_episode':records[0]}],permitted_actions=[]).model_dump()
+            receipts=[{'source':'Studio native receipt','native_episode':records[0]}],
+            project_state={'archive_inspection':True},permitted_actions=[]).model_dump()
         lab.journal.save_session(snapshot)
+        lab.remember_selection(snapshot)
         return snapshot
+
+
+def install_project_reads(api, lab):
+    @api.get('/api/lab/v1/task-card')
+    async def task_card(project_id: str, task_id: str):
+        if project_id == 'smart-swarm':
+            return await lab.swarm.call('task_card', {'target':task_id})
+        from .catalog import tasks
+        cards = [card for card in tasks() if card['task_id']==task_id]
+        if project_id!='demonstrations' or not cards:
+            raise HTTPException(404,'Task card unavailable')
+        return cards[0]
+
+    @api.get('/api/lab/v1/progress')
+    async def progress(project_id: str):
+        if project_id == 'smart-swarm':
+            return await lab.swarm.call('progress')
+        from .progress import demonstrations
+        return demonstrations(lab.journal)
+
+    @api.get('/api/lab/v1/project-jobs')
+    async def jobs():
+        return {**(await lab.swarm.call('jobs')), 'operations':lab.journal.jobs()}

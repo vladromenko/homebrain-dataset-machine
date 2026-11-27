@@ -58,7 +58,9 @@ class Studio:
         return result
 
     async def finish(self, session):
-        result = await self.native.request("studio", "/api/record/end", {})
+        result = await self.native.request('studio','/api/lab/record/finish',{
+            'dataset_id':session['native_ids']['dataset_id'],
+            'session_id':session['native_ids']['native_session_id']})
         session["project_state"]["finish_requested"] = True
         return result
 
@@ -78,9 +80,8 @@ class Studio:
         last = recording.get('last_episode') or {}
         if not identifier and last.get('session_id') == native_session:
             identifier = last.get('episode_id')
-        if not identifier:
-            return None
-        rows = await self.native.request('studio', f'/api/episodes/{dataset}?include_frames=false&episode_id={identifier}')
+        query = f'&episode_id={identifier}' if identifier else ''
+        rows = await self.native.request('studio', f'/api/episodes/{dataset}?include_frames=false'+query)
         verified = [row for row in rows if row.get('metadata', {}).get('session_id') == native_session
                     and row['metadata'].get('dataset_id') == dataset and row['metadata'].get('status') == 'complete']
         if len(verified) != 1 or verified[0].get('storage') != 'episodes':

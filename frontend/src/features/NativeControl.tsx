@@ -20,8 +20,8 @@ function RosmasterControl({control}: any) {
       <Button variant="outline" size="sm" onClick={() => send('arm_mode', {mode: 'cartesian'})}>Cartesian arm</Button>
       <Button variant="outline" size="sm" onClick={() => send('arm_mode', {mode: 'joint'})}>Joint arm</Button>
       <Button variant="outline" size="sm" onClick={() => send('leader')}>Connect leader</Button>
-      <Button variant="outline" size="sm" onClick={() => send('mirror', {on: true})}>Enable mirror</Button>
-      <Button variant="outline" size="sm" onClick={() => send('mirror', {on: false})}>Stop mirror</Button>
+      <Button variant="outline" size="sm" onClick={() => send('mirror_on')}>Enable mirror</Button>
+      <Button variant="outline" size="sm" onClick={() => send('mirror_off')}>Stop mirror</Button>
       <Button variant="outline" size="sm" onClick={() => {setPrecision(!precision); control.setPrecision(!precision);}}>
         {precision ? 'Precision speed' : 'Normal speed'}</Button>
     </div>

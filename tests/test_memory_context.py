@@ -28,3 +28,17 @@ def test_speech_score_counts_real_errors_without_a_fake_accuracy_floor():
     assert score('check gripper calibration', 'check gripper calibration')['word_error_rate'] == 0
     assert score('check gripper calibration', '')['word_error_rate'] == 1
     assert score('check gripper calibration', 'check calibration')['word_errors'] == 1
+
+
+def test_source_change_and_task_scope_expire_only_dependent_summary(tmp_path):
+    from homebrain.memory_context import invalidate_source
+    store = Store(str(tmp_path/'memory.sqlite'))
+    procedure = store.remember('project','Validated source summary','source')
+    attach(store,procedure,project='demonstrations',dependencies={
+        'source_path':'/approved/validator.py','source_sha256':'old','source_commit':'same-commit','task_id':'placement'})
+    preference = store.remember('preference','Use English','operator')
+    attach(store,preference)
+    assert procedure not in {row['id'] for row in retrieve(store,'demonstrations',task='docking')}
+    assert procedure in {row['id'] for row in retrieve(store,'demonstrations',task='placement')}
+    invalidate_source(store,'/approved/validator.py','same-commit','new-hash')
+    assert {row['id'] for row in retrieve(store,'demonstrations',task='placement')}=={preference}

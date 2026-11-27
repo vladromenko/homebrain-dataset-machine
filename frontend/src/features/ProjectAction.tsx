@@ -9,7 +9,7 @@ const names: Record<string, string> = {
   grant_relocation: 'Grant relocation window', predict: 'Seal the decision', reveal: 'Reveal evaluator outcome',
   close_incomplete: 'Keep incomplete attempt', observe_pilot: 'Confirm observed placement',
   review_pilot: 'Review pilot receipts', review: 'Review admission receipts', refresh: 'Refresh native readback',
-  freeze_study: 'Freeze the qualified study plan',
+  freeze_study: 'Freeze the qualified study plan', reconcile: 'Reconcile native state',
 };
 const sightlines = ['tank_sees_initial_and_final', 'rosmaster_sees_destinations', 'top_sees_final_relation', 'scene_remains_on_table'];
 
@@ -25,7 +25,7 @@ export function ProjectAction({session, busy, onAction}: any) {
   const sha = captures.find((row: any) => row.native_acknowledgement?.views)?.native_acknowledgement.sha256;
   const phase = session.project_state.required_phase || (session.state === 'relocation' ? 'relocation_closed' : 'placement_closed');
   const timing = session.project_state.phase_timing;
-  const disabled = busy || !action || session.pending_work.length > 0
+  const disabled = busy || !action || (session.pending_work.length > 0 && action !== 'reconcile')
     || (action === 'mark' && session.recording.state !== 'recording')
     || (action === 'grant_relocation' && timing && !timing.ready) || (action === 'freeze_study' && !values.freeze_reviewed);
   return <Card className="project-actions"><div className="list-heading"><h3>Protocol action</h3>

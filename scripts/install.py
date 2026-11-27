@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import shutil
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -47,6 +48,20 @@ def build(work):
         subprocess.run(["nice","-n","15","cmake","--build",str(target/"build-cpu"),"-j","2","--target","llama-server"],check=True)
 
 
+def install_agents(work):
+    target = work/'agent-runtime/opencode'
+    target.mkdir(parents=True,exist_ok=True)
+    for source,name in [('agent-runtime.package.json','package.json'),
+                        ('agent-runtime.package-lock.json','package-lock.json')]:
+        destination = target/name
+        expected = json.loads((ROOT/source).read_text())
+        if destination.exists() and json.loads(destination.read_text()) != expected:
+            raise ValueError('Existing agent manifest differs; use a new private work directory')
+        shutil.copyfile(ROOT/source,destination)
+    if not (target/'node_modules/.bin/opencode').exists():
+        subprocess.run(['npm','ci','--no-audit','--no-fund'],cwd=target,check=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--work",type=Path,required=True)
@@ -59,6 +74,7 @@ def main():
     config_path.write_text(json.dumps(config,indent=2))
     download_assets(work)
     build(work)
+    install_agents(work)
     print("Installation complete. Run ./homebrain.sh start")
 
 

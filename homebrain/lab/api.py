@@ -47,6 +47,8 @@ def router(lab, token):
 
     from .catalog_api import install as install_catalog
     install_catalog(api, lab)
+    from .project_jobs import install as install_project_jobs
+    install_project_jobs(api, lab)
     from .replay import install as install_replay
     install_replay(api, lab)
     from .observations import install

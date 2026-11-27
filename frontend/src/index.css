@@ -1136,3 +1136,30 @@ th,td {
   border-bottom:1px solid var(--border);
   padding:8px 5px
 }
+.progress-counters {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin:20px 0;
+}
+.progress-counters>div {
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:12px;
+  background:#fff;
+}
+.progress-counters strong {
+  font-size:20px;
+  display:block;
+  color:#56765f;
+}
+.progress-counters span {
+  font-size:9px;
+  color:#89988d;
+}
+.progress-counters p {
+  grid-column:1/-1;
+  font-size:9px;
+  color:#92a196;
+  overflow-wrap:anywhere;
+}
