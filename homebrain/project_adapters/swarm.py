@@ -29,7 +29,7 @@ class Swarm:
         env = {**os.environ, **descriptor.get("environment", {})}
         self.process = await asyncio.create_subprocess_exec(argv[0],str(ROOT/"homebrain/project_adapters/swarm_host.py"), cwd=descriptor["working_directory"],
             env=env, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL)
+            stderr=asyncio.subprocess.DEVNULL,limit=2_000_000)
         self.manifest = descriptor
 
     async def call(self, method, params=None):
