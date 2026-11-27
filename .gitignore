@@ -12,3 +12,5 @@ adapters.local/
 *.mp4
 *.sqlite*
 work/
+
+.venv
