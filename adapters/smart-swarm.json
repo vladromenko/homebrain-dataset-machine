@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "smart-swarm",
+  "approved_roots": [
+    "/srv/robotics/smart-swarm",
+    "/srv/robotics/smart-swarm-data"
+  ],
+  "capabilities": [
+    "status",
+    "cards",
+    "episodes",
+    "research",
+    "training"
+  ],
+  "permissions": [
+    "read"
+  ],
+  "files": {
+    "card": "/srv/robotics/smart-swarm-data/so101-pilot/card.json",
+    "progress": "/srv/robotics/smart-swarm-data/so101-pilot-status.json",
+    "intake": "/srv/robotics/smart-swarm-data/so101-pilot/native-intake.json",
+    "binding": "/srv/robotics/smart-swarm-data/so101-pilot/studio-binding.json",
+    "story_plan": "/srv/robotics/smart-swarm-data/collection-plans/physical-stories-v1.json",
+    "attended": "/srv/robotics/smart-swarm-data/so101-pilot/attended-preflight.json"
+  },
+  "endpoints": {
+    "status": "http://127.0.0.1:8020/api/status"
+  },
+  "episode_base": "http://127.0.0.1:8020/api/episodes/",
+  "docs": "/srv/robotics/smart-swarm/docs",
+  "source": "/srv/robotics/smart-swarm/src/smart_swarm",
+  "repository_mirror": "/srv/robotics/smart-swarm-git"
+}

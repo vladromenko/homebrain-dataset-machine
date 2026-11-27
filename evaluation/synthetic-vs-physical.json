@@ -1,0 +1,33 @@
+{
+  "physical_pass": [
+    "C920 USB serial association video/audio",
+    "native read-only live C920 acquisition",
+    "C920 16kHz PCM microphone capture",
+    "simultaneous C920 audio and existing video preview"
+  ],
+  "software_pass": [
+    "microphone simulated unplug/replug",
+    "persistent memory restart",
+    "synthetic camera translation invalidation",
+    "synthetic foreground movement",
+    "synthetic exposure/focus changes",
+    "synthetic ArUco marker recognition",
+    "freshness validation",
+    "tool permission isolation"
+  ],
+  "awaiting_physical": [
+    "operator spoken-English accuracy",
+    "physical USB disconnect/reconnect",
+    "physical camera repositioning",
+    "calibrated fixed marker recovery",
+    "external USB microphone connection",
+    "Mac browser permissions and audio playback",
+    "scientific native recording under assistant workload",
+    "successful admitted physical demonstration",
+    "ASR-gated hands-free wake phrase acoustic activation and echo"
+  ],
+  "not_implemented": [
+    "validated full-duplex echo handling",
+    "300\u2013500 reviewed fine-tuning examples and trained adaptation"
+  ]
+}

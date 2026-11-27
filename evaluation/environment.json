@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-27",
+  "hardware": "NVIDIA Jetson Orin NX Engineering Reference Developer Kit Super",
+  "l4t": "# R39 (release), REVISION: 2.1, GCID: 46758480, BOARD: generic, EABI: aarch64, DATE: Fri Aug  7 05:54:22 AM UTC 2026\n# KERNEL_VARIANT: oot\nTARGET_USERSPACE_LIB_DIR=nvidia\nTARGET_USERSPACE_LIB_DIR_PATH=usr/lib/aarch64-linux-gnu/nvidia\n",
+  "python": "Python 3.12.3",
+  "llama_revision": "15fcfc7357f8de73671d39e7d8c594e1beb3052d",
+  "reachy_reference_revision": "2673202a360a41935b45ac79141ef0bb529492ba",
+  "camera_serial": "EXAMPLE_CAMERA_SERIAL",
+  "video_owner": "SO101 Studio pid 2370 at inspection",
+  "root_storage": "models relocated to /srv/homebrain-models; no foreign files removed",
+  "microphone_probe": {
+    "duration_seconds": 3,
+    "sample_rate": 16000,
+    "channels": 1,
+    "rms_pcm16": 259.8618,
+    "peak_pcm16": 3699,
+    "clipping_fraction": 0,
+    "spoken_accuracy": "awaiting known operator speech"
+  }
+}

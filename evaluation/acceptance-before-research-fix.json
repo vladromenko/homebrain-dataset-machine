@@ -1,0 +1,163 @@
+[
+  {
+    "request": "What should I record next?",
+    "http_status": 200,
+    "elapsed_s": 0.34928973199566826,
+    "response": "The current project card is Smart Swarm / SO101 pilot (development). Its recorded phase is dataset_prepared_waiting_for_attended_preflight. Select Studio dataset ds_0000000000000000. First: Use A's attended SO101 preflight, approved controller, calibration and STOP procedure. Source: /srv/robotics/smart-swarm-data/so101-pilot/card.json. Native attended preflight must pass before recording.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Show me the laboratory camera.",
+    "http_status": 200,
+    "elapsed_s": 0.3543424600502476,
+    "response": "The image is dark. Increase workspace lighting before checking object visibility. Open the overview preview. Object identities have not yet been verified by visual inference; I cannot confirm the gripper and both containers.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Can you see the gripper and both containers?",
+    "http_status": 200,
+    "elapsed_s": 0.2746737899724394,
+    "response": "The image is dark. Increase workspace lighting before checking object visibility. Open the overview preview. Object identities have not yet been verified by visual inference; I cannot confirm the gripper and both containers.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Has the camera moved?",
+    "http_status": 200,
+    "elapsed_s": 0.4579508079914376,
+    "response": "Reference unverified; geometry suspended. Movement detection uses reference features and requires distributed agreement. Metric geometry is unavailable.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Is the new camera position suitable?",
+    "http_status": 200,
+    "elapsed_s": 0.2413390830042772,
+    "response": "The image is dark. Increase workspace lighting before checking object visibility. Open the overview preview. Object identities have not yet been verified by visual inference; I cannot confirm the gripper and both containers.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Which dataset should I select?",
+    "http_status": 200,
+    "elapsed_s": 0.22422758396714926,
+    "response": "Select native Studio dataset ds_0000000000000000 for this SO101 pilot. This is a development pilot, not the full research dataset.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Has my last demonstration been saved?",
+    "http_status": 200,
+    "elapsed_s": 0.28124673099955544,
+    "response": "Live native episode response: {\"data\": [], \"source\": \"http://127.0.0.1:8020/api/episodes/ds_0000000000000000?include_frames=false\", \"observed_at\": 1795783665.5109987, \"kind\": \"live\"}. A saved episode does not imply motor admission; check the separate native intake receipt.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Why was this episode rejected?",
+    "http_status": 200,
+    "elapsed_s": 0.28485262097092345,
+    "response": "Historical native admission receipt: {\"attempts\": [], \"binding\": {\"dataset_id\": \"ds_0000000000000000\", \"policy_cameras\": [\"so101-1/wrist\", \"so101-1/top\"], \"scene_group_id\": \"so101-attended-0a59bb729a92\", \"split\": \"development\", \"task_id\": \"smart-swarm-so101-cube-placement-v1\"}, \"counts\": {\"accepted_motor\": 0, \"attempts\": 0, \"fixture_only\": 0, \"incomplete\": 0, \"rejected\": 0, \"unknown_outcome\": 0, \"valid_story_failures\": 0}, \"native_export\": null, \"validation\": null, \"validation_rejection\": null} Source: /srv/robotics/smart-swarm-data/so101-pilot/native-intake.json. This receipt may lag new recordings.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "How many accepted demonstrations do I have?",
+    "http_status": 200,
+    "elapsed_s": 0.22422489599557593,
+    "response": "Historical native admission receipt: {\"attempts\": [], \"binding\": {\"dataset_id\": \"ds_0000000000000000\", \"policy_cameras\": [\"so101-1/wrist\", \"so101-1/top\"], \"scene_group_id\": \"so101-attended-0a59bb729a92\", \"split\": \"development\", \"task_id\": \"smart-swarm-so101-cube-placement-v1\"}, \"counts\": {\"accepted_motor\": 0, \"attempts\": 0, \"fixture_only\": 0, \"incomplete\": 0, \"rejected\": 0, \"unknown_outcome\": 0, \"valid_story_failures\": 0}, \"native_export\": null, \"validation\": null, \"validation_rejection\": null} Source: /srv/robotics/smart-swarm-data/so101-pilot/native-intake.json. This receipt may lag new recordings.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Why did ACT fail to grasp the object?",
+    "http_status": 200,
+    "elapsed_s": 0.22897764400113374,
+    "response": "No failed episode or checkpoint was specified. I cannot attribute a physical grasp failure without its native rollout receipt, video and configuration. Lower training loss alone does not show successful grasping. I can inspect the linked diagnostic record when you select it.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "What evidence is still missing for my paper?",
+    "http_status": 200,
+    "elapsed_s": 54.92740931495791,
+    "response": "No evidence is missing for the paper's specific claims. The provided text indicates that the system correctly identifies indistinguishable containers as producing no admissible RGB rule factor, which is a known limitation. It also confirms that sealed replay treats this case as a prior-only decision.\n\nThe text explicitly states: \"Sealed replay now treats that case as a prior-only decision and still rejects a missing, altered or undeclared sealed delivery file.\"\n\nTherefore, the system is functioning as designed for this specific failure mode; it is not failing to grasp, but rather correctly rejecting a missing delivery file. The \"failure\" described in the original prompt (if it refers to the delivery file) has been resolved by the system's current behavior.\n\n**Missing Evidence for Paper:**\nNone. The provided text confirms the system's behavior regarding indistinguishable containers and sealed delivery files.\n\n**Observation:**\nThe system correctly rejects a missing, altered, or undeclared sealed delivery file.\n\n**Historical Source:**\n`LEARNING_PILOT_2026-11-26.md` (Section: \"Sealed replay now treats that case as a prior-only decision and still rejects a missing, altered or undeclared sealed delivery file.\")\n\n**Advice:**\nNo action is required. The system is behaving according to the specified logic for indistinguishable containers.",
+    "sources": [
+      {
+        "path": "/srv/robotics/smart-swarm/docs/LEARNING_PILOT_2026-11-26.md",
+        "hash": "8ff920f0cbe6975a438aad203e730c0adbafdbbc7c476021c69689c0addbcf5a",
+        "indexed": 1795783554.321701
+      },
+      {
+        "path": "/srv/robotics/smart-swarm/docs/LITERATURE_INDEX.md",
+        "hash": "f7dc8ae36efb8a2a8d7b970b0fa70c882a032eb21fd927d7c3c540ae99dd378e",
+        "indexed": 1795783554.4404337
+      },
+      {
+        "path": "/srv/robotics/smart-swarm/docs/LITERATURE_MATRIX.md",
+        "hash": "e7b42d8a2db84792808dd8d8d2dc7f0641aa71b53e24f42a44f95d92f5ca14a8",
+        "indexed": 1795783554.2009447
+      },
+      {
+        "path": "/srv/robotics/smart-swarm/docs/LITERATURE_INDEX.md",
+        "hash": "f7dc8ae36efb8a2a8d7b970b0fa70c882a032eb21fd927d7c3c540ae99dd378e",
+        "indexed": 1795783554.44053
+      }
+    ],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Explain this function in the project.",
+    "http_status": 200,
+    "elapsed_s": 0.5976942720008083,
+    "response": "Please name the function or paste its code. I can retrieve approved Smart Swarm source, but cannot identify an unspecified function.",
+    "sources": [],
+    "project": "smart-swarm",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Switch to the Explorer project.",
+    "http_status": 200,
+    "elapsed_s": 0.09739973896648735,
+    "response": "Active project: explorer. Available read-only capabilities: status.",
+    "sources": [],
+    "project": "explorer",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  },
+  {
+    "request": "Repeat the previous instruction.",
+    "http_status": 200,
+    "elapsed_s": 0.0783672760007903,
+    "response": "Active project: explorer. Available read-only capabilities: status.",
+    "sources": [],
+    "project": "explorer",
+    "review": "pending_semantic_review",
+    "physical_success_claimed": false
+  }
+]

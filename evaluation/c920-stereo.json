@@ -1,0 +1,7 @@
+{
+  "channels": 2,
+  "sample_rate": 32000,
+  "sample_width": 2,
+  "duration_s": 1.0,
+  "kind": "actual C920 native stereo capture; not a spoken accuracy test"
+}

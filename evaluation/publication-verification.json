@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-27",
+  "source_application_commit": "96e0608",
+  "python_tests": {
+    "passed": 25,
+    "warnings": 1,
+    "command": ".venv/bin/python -m pytest -q"
+  },
+  "javascript_syntax": "node --check homebrain/static/app.js passed",
+  "publication": "independent snapshot with normalized host paths and identifiers",
+  "excluded": [
+    "runtime",
+    "access tokens",
+    "local configuration",
+    "local adapters",
+    "model weights",
+    "audio and video recordings",
+    "virtual environment"
+  ],
+  "physical_claims": "See ACCEPTANCE.md; publication does not establish additional physical verification."
+}

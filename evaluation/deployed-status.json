@@ -1,0 +1,89 @@
+{
+  "captured_at": 1795784352.0346222,
+  "camera": {
+    "state": "Ready",
+    "source": "studio_read_only",
+    "scene": {
+      "geometry_valid": false,
+      "pose": null,
+      "calibration_revision": null,
+      "regions": [],
+      "objects": [],
+      "status": "Reference unverified; geometry suspended",
+      "markers": [],
+      "camera_id": "/dev/v4l/by-id/usb-046d_HD_Pro_Webcam_C920_EXAMPLE_CAMERA_SERIAL-video-index0",
+      "observed_at": 1795784351.817982,
+      "resolution": [
+        640,
+        480
+      ],
+      "revision": 0,
+      "quality": {
+        "brightness": 4.8,
+        "dark": true,
+        "sharpness": 1.5
+      },
+      "motion": {
+        "observable": false,
+        "reason": "Insufficient stationary texture"
+      },
+      "guidance": "The image is dark. Increase workspace lighting before checking object visibility."
+    },
+    "requested_dedicated_resolution": [
+      1280,
+      720
+    ],
+    "shared_resolution_control": "native owner"
+  },
+  "microphones": {
+    "devices": [
+      {
+        "id": "/dev/snd/by-id/usb-046d_HD_Pro_Webcam_C920_EXAMPLE_CAMERA_SERIAL-02",
+        "serial": "046d_HD_Pro_Webcam_C920_EXAMPLE_CAMERA_SERIAL",
+        "name": "HD_Pro_Webcam_C920",
+        "alsa": "plughw:CARD=C920,DEV=0",
+        "state": "Available"
+      }
+    ],
+    "selected": {
+      "id": "/dev/snd/by-id/usb-046d_HD_Pro_Webcam_C920_EXAMPLE_CAMERA_SERIAL-02",
+      "serial": "046d_HD_Pro_Webcam_C920_EXAMPLE_CAMERA_SERIAL",
+      "name": "HD_Pro_Webcam_C920",
+      "alsa": "plughw:CARD=C920,DEV=0",
+      "state": "Available"
+    },
+    "state": "Permission required",
+    "authorized": false
+  },
+  "resources": {
+    "available_gb": 11.71,
+    "total_gb": 15.17,
+    "cpu_percent": 23.6,
+    "cpu_threads": 2,
+    "gpu_layers": 0,
+    "model": "qwen",
+    "capabilities": {
+      "text": true,
+      "vision": false,
+      "audio_input": false,
+      "audio_output": false,
+      "tools": "validated_read_only"
+    },
+    "available": true,
+    "governor": "Monitoring"
+  },
+  "readiness": {
+    "ready": false,
+    "blocking_issues": [
+      "No native attended setup and STOP receipt is available"
+    ],
+    "authority": "Native project preflight remains authoritative"
+  },
+  "projects": [
+    "smart-swarm",
+    "explorer",
+    "so101-studio",
+    "rosmaster",
+    "mujoco"
+  ]
+}

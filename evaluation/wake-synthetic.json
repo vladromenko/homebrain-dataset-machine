@@ -1,0 +1,20 @@
+[
+  {
+    "expected": "Hey, Homebrain, repeat the previous instruction.",
+    "transcript": "Hey, Homebrain repeat the previous instruction.",
+    "wake_command": "repeat the previous instruction.",
+    "provenance": "synthetic Piper speech; not physical false-activation measurement"
+  },
+  {
+    "expected": "Homebrain is ready. Check the calibration.",
+    "transcript": "Homebrain is ready. Check the calibration.",
+    "wake_command": null,
+    "provenance": "synthetic Piper speech; not physical false-activation measurement"
+  },
+  {
+    "expected": "The gripper and both containers are visible.",
+    "transcript": "The gripper and both containers are visible.",
+    "wake_command": null,
+    "provenance": "synthetic Piper speech; not physical false-activation measurement"
+  }
+]

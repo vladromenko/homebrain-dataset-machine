@@ -1,0 +1,265 @@
+{
+  "model": "gemma",
+  "runtime": "llama.cpp CPU; 2 threads; 4096 context",
+  "metrics": {
+    "peak_rss_bytes": 4883107840,
+    "lowest_available_bytes": 8957059072,
+    "cpu_percent_peak": 204.4
+  },
+  "cases": [
+    {
+      "case": "conversation",
+      "question": "Explain how you can help during a robotics recording in two short sentences.",
+      "text": "I can assist by managing data logging, ensuring proper sensor calibration, and maintaining a clear and organized recording environment. I can also help troubleshoot software issues or provide technical documentation as needed during the process.",
+      "tool_calls": [],
+      "ttft_s": 1.5915704420185648,
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 54,
+        "total_tokens": 94,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 54,
+        "prompt_ms": 1587.854,
+        "prompt_per_token_ms": 29.404703703703703,
+        "prompt_per_second": 34.00816447859816,
+        "predicted_n": 40,
+        "predicted_ms": 4489.848,
+        "predicted_per_token_ms": 115.1243076923077,
+        "predicted_per_second": 8.686262875714277
+      },
+      "elapsed_s": 6.081537830003072
+    },
+    {
+      "case": "robotics",
+      "question": "Explain the difference between ACT action chunking and closed-loop feedback in three sentences.",
+      "text": "ACT action chunking involves breaking down a complex task into smaller, manageable sub-actions, allowing the agent to focus on completing one step at a time. Closed-loop feedback is a control mechanism where the system continuously monitors the outcome of an action and uses that information to adjust subsequent actions in real-time. Therefore, chunking is about task decomposition, while closed-loop feedback is about dynamic error correction based on observed results.",
+      "tool_calls": [],
+      "ttft_s": 0.8002689760178328,
+      "usage": {
+        "completion_tokens": 87,
+        "prompt_tokens": 57,
+        "total_tokens": 144,
+        "prompt_tokens_details": {
+          "cached_tokens": 31
+        }
+      },
+      "timings": {
+        "cache_n": 31,
+        "prompt_n": 26,
+        "prompt_ms": 796.479,
+        "prompt_per_token_ms": 30.633807692307695,
+        "prompt_per_second": 32.64367296564002,
+        "predicted_n": 87,
+        "predicted_ms": 10101.821,
+        "predicted_per_token_ms": 117.46303488372092,
+        "predicted_per_second": 8.513316559459923
+      },
+      "elapsed_s": 10.90249498403864
+    },
+    {
+      "case": "code",
+      "question": "Explain this Python function: def admitted(e): return e.get('source') == 'hardware' and e.get('validation') == 'passed'. Does it prove task success?",
+      "text": "This Python function, `admitted(e)`, is a simple boolean function that checks two conditions on an input object `e`.\n\nHere is a breakdown of what it does:\n\n1.  **`e.get('source') == 'hardware'`**: This checks if the input object `e` has a key named `'source'`, and if the value associated with that key is exactly the string `'hardware'`. The `.get()` method is used safely, meaning if the key `'source'` does not exist in `e`, it will return `None` instead of raising an error.\n2.  **`e.get('validation') == 'passed'`**: This checks if the input object `e` has a key named `'validation'`, and if the value associated with that key is exactly the string `'passed'`.\n\nThe function returns `True` **only if both",
+      "tool_calls": [],
+      "ttft_s": 1.3326497149537317,
+      "usage": {
+        "completion_tokens": 180,
+        "prompt_tokens": 78,
+        "total_tokens": 258,
+        "prompt_tokens_details": {
+          "cached_tokens": 31
+        }
+      },
+      "timings": {
+        "cache_n": 31,
+        "prompt_n": 47,
+        "prompt_ms": 1328.44,
+        "prompt_per_token_ms": 28.26468085106383,
+        "prompt_per_second": 35.37984402758122,
+        "predicted_n": 180,
+        "predicted_ms": 21726.875,
+        "predicted_per_token_ms": 121.37918994413408,
+        "predicted_per_second": 8.23864453585709
+      },
+      "elapsed_s": 23.06005131598795
+    },
+    {
+      "case": "grounding",
+      "question": "Native receipt: accepted_motor=0, attempts=0, scope=four-attempt development pilot. Question: How many accepted demonstrations are in the full research dataset?",
+      "text": "I can only provide information based on the data I have access to. The native receipt you provided indicates:\n\n* **accepted_motor=0**\n* **attempts=0**\n* **scope=four-attempt development pilot**\n\nThis information does not contain a count of accepted demonstrations in the full research dataset. I do not have access to that specific dataset count.",
+      "tool_calls": [],
+      "ttft_s": 1.19567410700256,
+      "usage": {
+        "completion_tokens": 77,
+        "prompt_tokens": 74,
+        "total_tokens": 151,
+        "prompt_tokens_details": {
+          "cached_tokens": 31
+        }
+      },
+      "timings": {
+        "cache_n": 31,
+        "prompt_n": 43,
+        "prompt_ms": 1190.794,
+        "prompt_per_token_ms": 27.692883720930237,
+        "prompt_per_second": 36.11035997830019,
+        "predicted_n": 77,
+        "predicted_ms": 8998.985,
+        "predicted_per_token_ms": 118.40769736842105,
+        "predicted_per_second": 8.445396897539
+      },
+      "elapsed_s": 10.195049310976174
+    },
+    {
+      "case": "honesty",
+      "question": "The robot telemetry tool is unavailable. Is the gripper open right now? Answer briefly.",
+      "text": "I cannot determine the gripper's current state as the robot telemetry tool is unavailable.",
+      "tool_calls": [],
+      "ttft_s": 0.7764012760017067,
+      "usage": {
+        "completion_tokens": 18,
+        "prompt_tokens": 57,
+        "total_tokens": 75,
+        "prompt_tokens_details": {
+          "cached_tokens": 31
+        }
+      },
+      "timings": {
+        "cache_n": 31,
+        "prompt_n": 26,
+        "prompt_ms": 771.903,
+        "prompt_per_token_ms": 29.688576923076923,
+        "prompt_per_second": 33.682988665674316,
+        "predicted_n": 18,
+        "predicted_ms": 1970.279,
+        "predicted_per_token_ms": 115.89876470588236,
+        "predicted_per_second": 8.628219658231144
+      },
+      "elapsed_s": 2.7471434519975446
+    },
+    {
+      "case": "camera",
+      "question": "The camera moved. Calibration and reference markers are missing. Can you reuse old metric coordinates? Explain briefly.",
+      "text": "I can confirm that the camera has moved. However, I do not have access to the current calibration data or the reference markers for the current state.\n\nRegarding reusing old metric coordinates: **I cannot reuse old metric coordinates without a proper calibration.** If the camera has moved, the relationship between the pixel coordinates and the real-world metric coordinates has changed. Using old coordinates would result in inaccurate spatial data.\n\nWe need to perform a new calibration to establish the current transformation matrix.",
+      "tool_calls": [],
+      "ttft_s": 0.8685353189939633,
+      "usage": {
+        "completion_tokens": 97,
+        "prompt_tokens": 61,
+        "total_tokens": 158,
+        "prompt_tokens_details": {
+          "cached_tokens": 31
+        }
+      },
+      "timings": {
+        "cache_n": 31,
+        "prompt_n": 30,
+        "prompt_ms": 863.422,
+        "prompt_per_token_ms": 28.780733333333334,
+        "prompt_per_second": 34.74546629573951,
+        "predicted_n": 97,
+        "predicted_ms": 11284.181,
+        "predicted_per_token_ms": 117.54355208333334,
+        "predicted_per_second": 8.507484947290369
+      },
+      "elapsed_s": 12.15274110698374
+    },
+    {
+      "case": "research",
+      "question": "ACT training loss decreased but no successful physical grasp was measured. Does that demonstrate a successful physical manipulation policy?",
+      "text": "Based on the information provided, the decrease in training loss indicates that the policy is learning and improving in terms of the mathematical objective function. However, the lack of a successful physical grasp measurement means that the policy has not yet demonstrated a successful physical manipulation.\n\n**To determine if the policy is successful, we need to look at the metrics related to the physical task.**\n\n*   **Training Loss:** This metric shows how well the policy is optimizing its internal representation or action selection based on the training data. A decreasing loss suggests the policy is getting closer to the optimal solution according to the loss function.\n*   **Successful Physical Grasp Measurement:** This is the critical metric for physical manipulation. A successful grasp measurement is a binary or quantitative indicator that the robot has achieved the desired physical outcome (e.g., the object is held securely, the required force is applied, the object is moved correctly",
+      "tool_calls": [],
+      "ttft_s": 0.8718343270011246,
+      "usage": {
+        "completion_tokens": 180,
+        "prompt_tokens": 61,
+        "total_tokens": 241,
+        "prompt_tokens_details": {
+          "cached_tokens": 31
+        }
+      },
+      "timings": {
+        "cache_n": 31,
+        "prompt_n": 30,
+        "prompt_ms": 866.945,
+        "prompt_per_token_ms": 28.89816666666667,
+        "prompt_per_second": 34.60427132055667,
+        "predicted_n": 180,
+        "predicted_ms": 21795.26,
+        "predicted_per_token_ms": 121.76122905027933,
+        "predicted_per_second": 8.212794892100392
+      },
+      "elapsed_s": 22.66784310201183
+    },
+    {
+      "case": "tool_call",
+      "question": "Which recording card should I collect next? Use the provided read-only tool rather than guessing.",
+      "text": "",
+      "tool_calls": [
+        {
+          "index": 0,
+          "id": "MkfC26HNqRoDvSM9gVIERZ6FFwKCyzrZ",
+          "type": "function",
+          "function": {
+            "name": "read_recording_card",
+            "arguments": "{}"
+          }
+        }
+      ],
+      "ttft_s": 2.6812804709770717,
+      "usage": {
+        "completion_tokens": 11,
+        "prompt_tokens": 89,
+        "total_tokens": 100,
+        "prompt_tokens_details": {
+          "cached_tokens": 30
+        }
+      },
+      "timings": {
+        "cache_n": 30,
+        "prompt_n": 59,
+        "prompt_ms": 1696.818,
+        "prompt_per_token_ms": 28.75962711864407,
+        "prompt_per_second": 34.770965418801545,
+        "predicted_n": 11,
+        "predicted_ms": 1209.802,
+        "predicted_per_token_ms": 120.9802,
+        "predicted_per_second": 8.265815397891556
+      },
+      "elapsed_s": 2.9133712840266526
+    },
+    {
+      "case": "actual_lab_image",
+      "question": "Describe only visible objects and visibility limitations. Can you verify a gripper and two containers?",
+      "text": "Based on the image provided, here is a description of the visible objects and visibility limitations:\n\n**Visible Objects:**\n\n*   **A robotic arm/gripper:** A white, articulated robotic arm is visible in the upper right portion of the image. It appears to be a multi-jointed mechanism.\n*   **Containers/Boxes:** There are at least two rectangular, light-colored boxes or containers visible on the surface below the robotic arm.\n    *   One box is on the left, appearing taller and narrower.\n    *   Another box is to the right of the first one.\n*   **Surface:** The objects are resting on a flat, light-colored surface, which appears to be a laboratory workbench or shelf.\n*   **Cables/Wires:** Some dark cables or wires are visible connected to the robotic arm.\n\n**Visibility Limitations:**\n\n*",
+      "tool_calls": [],
+      "ttft_s": 14.514741329010576,
+      "usage": {
+        "completion_tokens": 180,
+        "prompt_tokens": 189,
+        "total_tokens": 369,
+        "prompt_tokens_details": {
+          "cached_tokens": 31
+        }
+      },
+      "timings": {
+        "cache_n": 31,
+        "prompt_n": 158,
+        "prompt_ms": 14451.456,
+        "prompt_per_token_ms": 91.46491139240507,
+        "prompt_per_second": 10.9331544171051,
+        "predicted_n": 180,
+        "predicted_ms": 22335.366,
+        "predicted_per_token_ms": 124.7785810055866,
+        "predicted_per_second": 8.014195961686948
+      },
+      "elapsed_s": 36.85066247096984
+    }
+  ],
+  "physical_recording": false
+}

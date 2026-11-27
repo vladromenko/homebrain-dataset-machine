@@ -1,0 +1,182 @@
+{
+  "kind": "native_live_preview_continuity",
+  "physical_scientific_recording": false,
+  "samples": [
+    {
+      "time": 507270.740953846,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652573,
+          "fps": 20.787422825207944,
+          "age_ms": 29.01982
+        },
+        "wrist": {
+          "frames": 4088845,
+          "fps": 29.641040269584753,
+          "age_ms": 7.54047
+        }
+      }
+    },
+    {
+      "time": 507271.427018406,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652583,
+          "fps": 14.954954001456343,
+          "age_ms": 50.883471
+        },
+        "wrist": {
+          "frames": 4088865,
+          "fps": 31.410588315472943,
+          "age_ms": 28.241455
+        }
+      }
+    },
+    {
+      "time": 507272.145463962,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652594,
+          "fps": 14.944257800983165,
+          "age_ms": 29.833289
+        },
+        "wrist": {
+          "frames": 4088887,
+          "fps": 29.664322509971893,
+          "age_ms": 0.660472
+        }
+      }
+    },
+    {
+      "time": 507272.970724166,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652606,
+          "fps": 15.09326953830911,
+          "age_ms": 59.351015
+        },
+        "wrist": {
+          "frames": 4088911,
+          "fps": 29.659367209689147,
+          "age_ms": 21.947943
+        }
+      }
+    },
+    {
+      "time": 507273.941542362,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652620,
+          "fps": 15.044376623391669,
+          "age_ms": 65.702128
+        },
+        "wrist": {
+          "frames": 4088939,
+          "fps": 29.91841329900483,
+          "age_ms": 21.481494
+        }
+      }
+    },
+    {
+      "time": 507274.622920697,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652631,
+          "fps": 15.080834609236573,
+          "age_ms": 50.252184
+        },
+        "wrist": {
+          "frames": 4088961,
+          "fps": 29.645768597827185,
+          "age_ms": 0.70457
+        }
+      }
+    },
+    {
+      "time": 507275.305329661,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652642,
+          "fps": 15.256385863796396,
+          "age_ms": 4.129111
+        },
+        "wrist": {
+          "frames": 4088981,
+          "fps": 30.14904815083376,
+          "age_ms": 19.803288
+        }
+      }
+    },
+    {
+      "time": 507275.989293305,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652652,
+          "fps": 14.946387946993617,
+          "age_ms": 19.137567
+        },
+        "wrist": {
+          "frames": 4089001,
+          "fps": 29.655161437000835,
+          "age_ms": 30.4752
+        }
+      }
+    },
+    {
+      "time": 507276.669304035,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652662,
+          "fps": 15.024622200616149,
+          "age_ms": 34.916036
+        },
+        "wrist": {
+          "frames": 4089022,
+          "fps": 30.96832661749041,
+          "age_ms": 6.857884
+        }
+      }
+    },
+    {
+      "time": 507277.415886428,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652673,
+          "fps": 15.084401774799682,
+          "age_ms": 50.59642
+        },
+        "wrist": {
+          "frames": 4089044,
+          "fps": 30.181899365639858,
+          "age_ms": 17.216633
+        }
+      }
+    },
+    {
+      "time": 507278.279071315,
+      "recording_active": false,
+      "cameras": {
+        "top": {
+          "frames": 2652686,
+          "fps": 15.082782357318694,
+          "age_ms": 48.42754
+        },
+        "wrist": {
+          "frames": 4089070,
+          "fps": 29.678031012219613,
+          "age_ms": 3.115442
+        }
+      }
+    }
+  ]
+}

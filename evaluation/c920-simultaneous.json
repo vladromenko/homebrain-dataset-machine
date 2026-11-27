@@ -1,0 +1,29 @@
+{
+  "kind": "physical_microphone_and_existing_native_live_preview",
+  "native_recording": false,
+  "before": {
+    "top": {
+      "frames": 2649601,
+      "fps": 15.08013883068793,
+      "age_ms": 35.419974
+    },
+    "wrist": {
+      "frames": 4082954,
+      "fps": 29.846279763344413,
+      "age_ms": 13.193643
+    }
+  },
+  "after": {
+    "top": {
+      "frames": 2649651,
+      "fps": 15.072384188423888,
+      "age_ms": 63.150125
+    },
+    "wrist": {
+      "frames": 4083054,
+      "fps": 30.852628339375,
+      "age_ms": 19.724222
+    }
+  },
+  "elapsed_s": 3.3619311620132066
+}

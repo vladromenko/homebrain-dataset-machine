@@ -1,0 +1,40 @@
+{
+  "model": "SmolVLM2-500M Q8_0 with matched Q8 projector",
+  "elapsed_s": 13.405552238982636,
+  "answer": "AI interpretation of the image captured 13.3 seconds ago:  The image depicts a dark room with a white wall and a black door. Object identities and physical success require operator verification.",
+  "camera": {
+    "state": "Stale",
+    "source": null,
+    "scene": {
+      "geometry_valid": false,
+      "pose": null,
+      "calibration_revision": null,
+      "regions": [],
+      "objects": [],
+      "status": "Image assistance available; metric geometry unavailable",
+      "markers": [],
+      "camera_id": "/dev/v4l/by-id/usb-046d_HD_Pro_Webcam_C920_EXAMPLE_CAMERA_SERIAL-video-index0",
+      "observed_at": 1795783222.3241177,
+      "resolution": [
+        640,
+        480
+      ],
+      "revision": 0,
+      "quality": {
+        "brightness": 9.0,
+        "dark": true,
+        "sharpness": 2.6
+      },
+      "motion": {
+        "observable": false
+      },
+      "guidance": "The image is dark. Increase workspace lighting before checking object visibility."
+    },
+    "requested_dedicated_resolution": [
+      1280,
+      720
+    ],
+    "shared_resolution_control": "native owner"
+  },
+  "kind": "actual authorized C920 image; AI object interpretation unverified"
+}

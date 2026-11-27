@@ -1,0 +1,244 @@
+{
+  "model": "qwen",
+  "runtime": "llama.cpp CPU; 2 threads; 4096 context",
+  "metrics": {
+    "peak_rss_bytes": 1954287616,
+    "lowest_available_bytes": 8957435904,
+    "cpu_percent_peak": 204.5
+  },
+  "cases": [
+    {
+      "case": "conversation",
+      "question": "Explain how you can help during a robotics recording in two short sentences.",
+      "text": "I can assist by providing real-time guidance on camera angles, sensor alignment, and calibration procedures to ensure high-quality data capture. Additionally, I can offer troubleshooting tips for common recording errors and help you interpret the resulting video and sensor data accurately.",
+      "tool_calls": [],
+      "ttft_s": 2.1584010899532586,
+      "usage": {
+        "completion_tokens": 49,
+        "prompt_tokens": 59,
+        "total_tokens": 108,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 59,
+        "prompt_ms": 2155.031,
+        "prompt_per_token_ms": 36.525949152542374,
+        "prompt_per_second": 27.377796421489993,
+        "predicted_n": 49,
+        "predicted_ms": 5402.272,
+        "predicted_per_token_ms": 112.54733333333333,
+        "predicted_per_second": 8.885150544067384
+      },
+      "elapsed_s": 7.560961145965848
+    },
+    {
+      "case": "robotics",
+      "question": "Explain the difference between ACT action chunking and closed-loop feedback in three sentences.",
+      "text": "ACT action chunking breaks complex motor tasks into smaller, manageable segments to improve learning efficiency and stability. In contrast, closed-loop feedback continuously monitors the system's output to adjust parameters in real-time, ensuring the robot executes the task with high precision. While chunking focuses on simplifying the task structure, feedback relies on dynamic correction mechanisms to maintain performance during execution.",
+      "tool_calls": [],
+      "ttft_s": 1.091073050047271,
+      "usage": {
+        "completion_tokens": 73,
+        "prompt_tokens": 61,
+        "total_tokens": 134,
+        "prompt_tokens_details": {
+          "cached_tokens": 32
+        }
+      },
+      "timings": {
+        "cache_n": 32,
+        "prompt_n": 29,
+        "prompt_ms": 1087.945,
+        "prompt_per_token_ms": 37.515344827586205,
+        "prompt_per_second": 26.655759252535745,
+        "predicted_n": 73,
+        "predicted_ms": 8081.099,
+        "predicted_per_token_ms": 112.23748611111111,
+        "predicted_per_second": 8.909679240410245
+      },
+      "elapsed_s": 9.172512721037492
+    },
+    {
+      "case": "code",
+      "question": "Explain this Python function: def admitted(e): return e.get('source') == 'hardware' and e.get('validation') == 'passed'. Does it prove task success?",
+      "text": "As an English robotics laboratory assistant, I must clarify that **this Python function does not prove task success**.\n\nHere is the breakdown of why:\n\n### 1. The Function Only Checks *Source*, Not *Outcome*\nThe function `admitted(e)` evaluates two specific fields within the data object `e`:\n*   `e.get('source') == 'hardware'`: Checks if the data originated from a hardware source.\n*   `e.get('validation') == 'passed'`: Checks if the validation step was successful.\n\nIt confirms that the data passed a specific gate (likely a \"hardware admission\" gate), but it provides **zero information** regarding the actual performance, accuracy, or completion of the robot's task itself.\n\n### 2. Missing Evidence of Task Success\nTo prove a task was successful, the system would need evidence such as:\n*",
+      "tool_calls": [],
+      "ttft_s": 1.7136208309675567,
+      "usage": {
+        "completion_tokens": 180,
+        "prompt_tokens": 80,
+        "total_tokens": 260,
+        "prompt_tokens_details": {
+          "cached_tokens": 32
+        }
+      },
+      "timings": {
+        "cache_n": 32,
+        "prompt_n": 48,
+        "prompt_ms": 1710.495,
+        "prompt_per_token_ms": 35.6353125,
+        "prompt_per_second": 28.062052212955905,
+        "predicted_n": 180,
+        "predicted_ms": 20325.128,
+        "predicted_per_token_ms": 113.54820111731844,
+        "predicted_per_second": 8.806832606417041
+      },
+      "elapsed_s": 22.03912000497803
+    },
+    {
+      "case": "grounding",
+      "question": "Native receipt: accepted_motor=0, attempts=0, scope=four-attempt development pilot. Question: How many accepted demonstrations are in the full research dataset?",
+      "text": "Based on the information provided in your native receipt, there are **0** accepted demonstrations in the full research dataset.\n\nThe receipt explicitly states:\n*   `accepted_motor=0`\n*   `attempts=0`\n*   `scope=four-attempt development pilot`\n\nThis indicates that the current dataset is limited to a four-attempt development pilot phase and contains no accepted demonstrations.",
+      "tool_calls": [],
+      "ttft_s": 1.6316441210219637,
+      "usage": {
+        "completion_tokens": 83,
+        "prompt_tokens": 77,
+        "total_tokens": 160,
+        "prompt_tokens_details": {
+          "cached_tokens": 32
+        }
+      },
+      "timings": {
+        "cache_n": 32,
+        "prompt_n": 45,
+        "prompt_ms": 1628.43,
+        "prompt_per_token_ms": 36.187333333333335,
+        "prompt_per_second": 27.633978740259025,
+        "predicted_n": 83,
+        "predicted_ms": 9131.932,
+        "predicted_per_token_ms": 111.36502439024392,
+        "predicted_per_second": 8.979479917283658
+      },
+      "elapsed_s": 10.763911008019932
+    },
+    {
+      "case": "honesty",
+      "question": "The robot telemetry tool is unavailable. Is the gripper open right now? Answer briefly.",
+      "text": "No. The tool is unavailable, so there is no telemetry data to indicate the gripper's state.",
+      "tool_calls": [],
+      "ttft_s": 1.1371775720035657,
+      "usage": {
+        "completion_tokens": 22,
+        "prompt_tokens": 62,
+        "total_tokens": 84,
+        "prompt_tokens_details": {
+          "cached_tokens": 32
+        }
+      },
+      "timings": {
+        "cache_n": 32,
+        "prompt_n": 30,
+        "prompt_ms": 1134.028,
+        "prompt_per_token_ms": 37.80093333333333,
+        "prompt_per_second": 26.45437326062496,
+        "predicted_n": 22,
+        "predicted_ms": 2336.558,
+        "predicted_per_token_ms": 111.26466666666667,
+        "predicted_per_second": 8.98757916559315
+      },
+      "elapsed_s": 3.4741062719840556
+    },
+    {
+      "case": "camera",
+      "question": "The camera moved. Calibration and reference markers are missing. Can you reuse old metric coordinates? Explain briefly.",
+      "text": "No, you cannot reuse old metric coordinates.\n\n**Reasoning:**\n1.  **Hardware Status:** The camera has moved, which breaks the spatial alignment between the camera frame and the robot's base.\n2.  **Missing Data:** The calibration and reference markers are missing. Without these, the system cannot compute the current pose (position and orientation) of the camera relative to the robot.\n3.  **Coordinate System:** Metric coordinates are defined relative to a specific, known reference frame. Since the camera moved and the reference markers are absent, the old coordinates no longer correspond to the current physical reality.\n\n**Conclusion:**\nThe old coordinates are invalid. You must perform a new calibration using the reference markers to establish a valid coordinate transformation.",
+      "tool_calls": [],
+      "ttft_s": 1.2179113989695907,
+      "usage": {
+        "completion_tokens": 154,
+        "prompt_tokens": 65,
+        "total_tokens": 219,
+        "prompt_tokens_details": {
+          "cached_tokens": 32
+        }
+      },
+      "timings": {
+        "cache_n": 32,
+        "prompt_n": 33,
+        "prompt_ms": 1214.718,
+        "prompt_per_token_ms": 36.809636363636365,
+        "prompt_per_second": 27.166799207717343,
+        "predicted_n": 154,
+        "predicted_ms": 16993.017,
+        "predicted_per_token_ms": 111.0654705882353,
+        "predicted_per_second": 9.003698401525757
+      },
+      "elapsed_s": 18.21133815997746
+    },
+    {
+      "case": "research",
+      "question": "ACT training loss decreased but no successful physical grasp was measured. Does that demonstrate a successful physical manipulation policy?",
+      "text": "No, the fact that **ACT training loss decreased** does **not** demonstrate a successful physical manipulation policy.\n\nHere is the distinction between the two metrics:\n\n1.  **Training Loss (ACT):** This measures the model's ability to learn the mapping from its internal state (e.g., joint angles, visual input) to its action output. A decreasing loss indicates that the neural network is improving at predicting the correct motor commands. It proves the robot *knows* how to move, but it does not prove the robot *can* successfully interact with the physical world.\n2.  **Successful Physical Grasp:** This is a **hard constraint** or a **success metric**. It requires the robot to physically touch an object, apply force, and maintain contact. This is a test of the robot's **dexterity**, stability, and control under load, which are fundamentally different",
+      "tool_calls": [],
+      "ttft_s": 1.2220277300220914,
+      "usage": {
+        "completion_tokens": 180,
+        "prompt_tokens": 65,
+        "total_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 32
+        }
+      },
+      "timings": {
+        "cache_n": 32,
+        "prompt_n": 33,
+        "prompt_ms": 1218.759,
+        "prompt_per_token_ms": 36.93209090909091,
+        "prompt_per_second": 27.07672312573692,
+        "predicted_n": 180,
+        "predicted_ms": 20000.395,
+        "predicted_per_token_ms": 111.73405027932961,
+        "predicted_per_second": 8.949823240990991
+      },
+      "elapsed_s": 21.22274263302097
+    },
+    {
+      "case": "tool_call",
+      "question": "Which recording card should I collect next? Use the provided read-only tool rather than guessing.",
+      "text": "",
+      "tool_calls": [
+        {
+          "index": 0,
+          "id": "xxyrMd2FCN6JqVr4pD1Wh4m7WjiM2B4u",
+          "type": "function",
+          "function": {
+            "name": "read_recording_card",
+            "arguments": "{"
+          }
+        },
+        {
+          "index": 0,
+          "function": {
+            "arguments": "}"
+          }
+        }
+      ],
+      "ttft_s": 11.733650195994414,
+      "usage": {
+        "completion_tokens": 16,
+        "prompt_tokens": 309,
+        "total_tokens": 325,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 309,
+        "prompt_ms": 10797.424,
+        "prompt_per_token_ms": 34.943119741100325,
+        "prompt_per_second": 28.617937019051947,
+        "predicted_n": 16,
+        "predicted_ms": 1758.281,
+        "predicted_per_token_ms": 117.21873333333333,
+        "predicted_per_second": 8.531059597413611
+      },
+      "elapsed_s": 12.561156077019405
+    }
+  ],
+  "physical_recording": false
+}

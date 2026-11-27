@@ -1,0 +1,160 @@
+[
+  {
+    "query": "What should I record next for the physical demonstration?",
+    "method": "fts",
+    "paths": [
+      "LITERATURE_INDEX.md",
+      "LITERATURE_MATRIX.md",
+      "PAPER_DRAFT.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "expected_any": [
+      "OPERATOR_GUIDE.md",
+      "DATA_COLLECTION_PLAN.md"
+    ],
+    "hit_at_4": false,
+    "latency_s": 0.0036583070177584887
+  },
+  {
+    "query": "What should I record next for the physical demonstration?",
+    "method": "hybrid",
+    "paths": [
+      "LITERATURE_INDEX.md",
+      "DATA_COLLECTION_PLAN.md",
+      "LITERATURE_MATRIX.md",
+      "physical_evidence_dataset.py"
+    ],
+    "expected_any": [
+      "OPERATOR_GUIDE.md",
+      "DATA_COLLECTION_PLAN.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.291822110011708
+  },
+  {
+    "query": "Why did the ACT motor policy fail at grasp?",
+    "method": "fts",
+    "paths": [
+      "TRAINING_PLAN.md",
+      "PAPER_DRAFT.md",
+      "IMPLEMENTATION_PASS_2026-11-26.md",
+      "LEARNING_PILOT_2026-11-26.md"
+    ],
+    "expected_any": [
+      "LEARNING_PILOT_2026-11-26.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.0033834489877335727
+  },
+  {
+    "query": "Why did the ACT motor policy fail at grasp?",
+    "method": "hybrid",
+    "paths": [
+      "IMPLEMENTATION_PASS_2026-11-26.md",
+      "LEARNING_PILOT_2026-11-26.md",
+      "TRAINING_PLAN.md",
+      "PAPER_DRAFT.md"
+    ],
+    "expected_any": [
+      "LEARNING_PILOT_2026-11-26.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.02841881400672719
+  },
+  {
+    "query": "Which evidence is still missing for physical results in the paper?",
+    "method": "fts",
+    "paths": [
+      "physical_paper.py",
+      "physical_story_review.py",
+      "PAPER_DRAFT.md",
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "expected_any": [
+      "CLAIMS_AND_LIMITATIONS.md",
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.003813032992184162
+  },
+  {
+    "query": "Which evidence is still missing for physical results in the paper?",
+    "method": "hybrid",
+    "paths": [
+      "physical_paper.py",
+      "physical_story_review.py",
+      "PAPER_DRAFT.md",
+      "BASELINE_MATRIX.md"
+    ],
+    "expected_any": [
+      "CLAIMS_AND_LIMITATIONS.md",
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "hit_at_4": false,
+    "latency_s": 0.031940701010171324
+  },
+  {
+    "query": "How are private observations kept separate from evaluator truth?",
+    "method": "fts",
+    "paths": [
+      "evidence_inputs.py",
+      "PAPER_DRAFT.md",
+      "RESEARCH_PROTOCOL.md",
+      "BASELINE_MATRIX.md"
+    ],
+    "expected_any": [
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.003389050019904971
+  },
+  {
+    "query": "How are private observations kept separate from evaluator truth?",
+    "method": "hybrid",
+    "paths": [
+      "evidence_inputs.py",
+      "physical_story_replay.py",
+      "PAPER_DRAFT.md",
+      "physical_evidence_dataset.py"
+    ],
+    "expected_any": [
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "hit_at_4": false,
+    "latency_s": 0.029705164022743702
+  },
+  {
+    "query": "What are the current study baseline limitations?",
+    "method": "fts",
+    "paths": [
+      "BASELINE_MATRIX.md",
+      "CLAIMS_AND_LIMITATIONS.md",
+      "evaluate_motor.py",
+      "LITERATURE_INDEX.md"
+    ],
+    "expected_any": [
+      "BASELINE_MATRIX.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.0023097790544852614
+  },
+  {
+    "query": "What are the current study baseline limitations?",
+    "method": "hybrid",
+    "paths": [
+      "CLAIMS_AND_LIMITATIONS.md",
+      "BASELINE_MATRIX.md",
+      "evaluate_motor.py",
+      "PRIMARY_MATCHED_COMPACT_RESULTS.md"
+    ],
+    "expected_any": [
+      "BASELINE_MATRIX.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.028215861995704472
+  }
+]

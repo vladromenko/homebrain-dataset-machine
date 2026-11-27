@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "so101-studio",
+  "approved_roots": [
+    "/srv/robotics/so101_ai_learning"
+  ],
+  "capabilities": [
+    "status"
+  ],
+  "permissions": [
+    "read"
+  ],
+  "files": {},
+  "endpoints": {
+    "status": "http://127.0.0.1:8020/api/status"
+  }
+}

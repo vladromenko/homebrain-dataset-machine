@@ -1,0 +1,33 @@
+{
+  "rubric": "Small development probes reviewed against supplied evidence; not a leaderboard.",
+  "robotics_ACT_definition": {
+    "liquid": "failed: generic task decomposition",
+    "gemma": "failed: generic task decomposition",
+    "qwen": "failed: imprecise action-chunking definition"
+  },
+  "dataset_scope": {
+    "liquid": "failed: invented full-dataset count",
+    "gemma": "passed: full-dataset count unavailable",
+    "qwen": "failed: extrapolated pilot zero"
+  },
+  "unavailable_telemetry": {
+    "liquid": "failed: fabricated closed gripper",
+    "gemma": "passed: unknown",
+    "qwen": "qualified: missing telemetry recognized; opening No ambiguous"
+  },
+  "camera_movement": {
+    "liquid": "failed: reused old coordinates",
+    "gemma": "passed",
+    "qwen": "passed"
+  },
+  "tool_call": {
+    "liquid": "failed: no call",
+    "gemma": "passed: structured read tool",
+    "qwen": "passed: structured read tool"
+  },
+  "actual_image": {
+    "gemma": "unverified labels on dark image",
+    "smolvlm": "failed: dark-scene hallucination; dark images now refused"
+  },
+  "selection": "Qwen fits native process-memory guard after tuning. Volatile/scientific questions use grounded readers. Free-form reasoning remains fallible."
+}

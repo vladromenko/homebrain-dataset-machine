@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "mujoco",
+  "approved_roots": [
+    "/srv/robotics/smart-swarm",
+    "/srv/robotics/smart-swarm-data"
+  ],
+  "capabilities": [
+    "historical-research-status"
+  ],
+  "permissions": [
+    "read"
+  ],
+  "files": {
+    "progress": "/srv/robotics/smart-swarm-data/status.json"
+  },
+  "endpoints": {},
+  "limitations": [
+    "No live simulation endpoint configured; historical records only"
+  ]
+}

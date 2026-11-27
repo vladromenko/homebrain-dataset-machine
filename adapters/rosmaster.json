@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "rosmaster",
+  "approved_roots": [
+    "/srv/robotics/explorer-4.0"
+  ],
+  "capabilities": [
+    "fleet-status"
+  ],
+  "permissions": [
+    "read"
+  ],
+  "files": {},
+  "endpoints": {
+    "status": "http://127.0.0.1:8030/api/health"
+  },
+  "limitations": [
+    "Uses Explorer fleet health; no native motion tools or policy feed"
+  ]
+}

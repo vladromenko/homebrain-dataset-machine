@@ -1,0 +1,160 @@
+[
+  {
+    "query": "What should I record next for the physical demonstration?",
+    "method": "fts",
+    "paths": [
+      "LITERATURE_INDEX.md",
+      "LITERATURE_INDEX.md",
+      "physical_story_operator.py",
+      "LITERATURE_INDEX.md"
+    ],
+    "expected_any": [
+      "OPERATOR_GUIDE.md",
+      "DATA_COLLECTION_PLAN.md"
+    ],
+    "hit_at_4": false,
+    "latency_s": 0.004868975025601685
+  },
+  {
+    "query": "What should I record next for the physical demonstration?",
+    "method": "hybrid",
+    "paths": [
+      "LITERATURE_INDEX.md",
+      "DATA_COLLECTION_PLAN.md",
+      "LITERATURE_INDEX.md",
+      "physical_evidence_dataset.py"
+    ],
+    "expected_any": [
+      "OPERATOR_GUIDE.md",
+      "DATA_COLLECTION_PLAN.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.28663050098111853
+  },
+  {
+    "query": "Why did the ACT motor policy fail at grasp?",
+    "method": "fts",
+    "paths": [
+      "TRAINING_PLAN.md",
+      "PAPER_DRAFT.md",
+      "CLAIMS_AND_LIMITATIONS.md",
+      "IMPLEMENTATION_PASS_2026-11-26.md"
+    ],
+    "expected_any": [
+      "LEARNING_PILOT_2026-11-26.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.003818920988123864
+  },
+  {
+    "query": "Why did the ACT motor policy fail at grasp?",
+    "method": "hybrid",
+    "paths": [
+      "IMPLEMENTATION_PASS_2026-11-26.md",
+      "TRAINING_PLAN.md",
+      "PAPER_DRAFT.md",
+      "PAPER_DRAFT.md"
+    ],
+    "expected_any": [
+      "LEARNING_PILOT_2026-11-26.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "hit_at_4": false,
+    "latency_s": 0.028040880046319216
+  },
+  {
+    "query": "Which evidence is still missing for physical results in the paper?",
+    "method": "fts",
+    "paths": [
+      "PAPER_DRAFT.md",
+      "RESEARCH_PROTOCOL.md",
+      "LITERATURE_MATRIX.md",
+      "physical_paper.py"
+    ],
+    "expected_any": [
+      "CLAIMS_AND_LIMITATIONS.md",
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.004601254011504352
+  },
+  {
+    "query": "Which evidence is still missing for physical results in the paper?",
+    "method": "hybrid",
+    "paths": [
+      "PAPER_DRAFT.md",
+      "physical_story_review.py",
+      "RESEARCH_PROTOCOL.md",
+      "physical_paper.py"
+    ],
+    "expected_any": [
+      "CLAIMS_AND_LIMITATIONS.md",
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.03171422804007307
+  },
+  {
+    "query": "How are private observations kept separate from evaluator truth?",
+    "method": "fts",
+    "paths": [
+      "BASELINE_MATRIX.md",
+      "PAPER_DRAFT.md",
+      "PAPER_DRAFT.md",
+      "evidence_inputs.py"
+    ],
+    "expected_any": [
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "hit_at_4": false,
+    "latency_s": 0.003985039016697556
+  },
+  {
+    "query": "How are private observations kept separate from evaluator truth?",
+    "method": "hybrid",
+    "paths": [
+      "BASELINE_MATRIX.md",
+      "physical_story_replay.py",
+      "PAPER_DRAFT.md",
+      "physical_evidence_dataset.py"
+    ],
+    "expected_any": [
+      "RESEARCH_PROTOCOL.md"
+    ],
+    "hit_at_4": false,
+    "latency_s": 0.030031800037249923
+  },
+  {
+    "query": "What are the current study baseline limitations?",
+    "method": "fts",
+    "paths": [
+      "LITERATURE_INDEX.md",
+      "BASELINE_MATRIX.md",
+      "CLAIMS_AND_LIMITATIONS.md",
+      "BASELINE_MATRIX.md"
+    ],
+    "expected_any": [
+      "BASELINE_MATRIX.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.0035500789526849985
+  },
+  {
+    "query": "What are the current study baseline limitations?",
+    "method": "hybrid",
+    "paths": [
+      "CLAIMS_AND_LIMITATIONS.md",
+      "LITERATURE_INDEX.md",
+      "BASELINE_MATRIX.md",
+      "BASELINE_MATRIX.md"
+    ],
+    "expected_any": [
+      "BASELINE_MATRIX.md",
+      "CLAIMS_AND_LIMITATIONS.md"
+    ],
+    "hit_at_4": true,
+    "latency_s": 0.02664412703597918
+  }
+]

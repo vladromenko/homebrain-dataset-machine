@@ -1,0 +1,42 @@
+[
+  {
+    "expected": "Homebrain is ready. Check the gripper calibration before recording the dataset episode.",
+    "actual": "Homebrain is ready. Check the gripper calibration before recording the dataset episode.",
+    "word_error_rate": 0.0,
+    "tts_s": 1.593846564006526,
+    "asr_s": 2.056093474966474,
+    "provenance": "synthetic Piper speech; not physical microphone speech"
+  },
+  {
+    "expected": "Explain LeRobot and SO101. Check the ROSMASTER and Tank cameras.",
+    "actual": "Explain LeRobot and SO101. Check the ROSMASTER in Tank cameras.",
+    "word_error_rate": 0.1,
+    "tts_s": 0.43721619900316,
+    "asr_s": 0.9647410479956307,
+    "provenance": "synthetic Piper speech; not physical microphone speech"
+  },
+  {
+    "expected": "Compare ACT and SmolVLA in MuJoCo. Read the checkpoint and joint position.",
+    "actual": "Compare ACT in SmolVLA and MuJoCo, read the checkpoint and joint position.",
+    "word_error_rate": 0.16666666666666666,
+    "tts_s": 0.5462316200137138,
+    "asr_s": 0.9596126319956966,
+    "provenance": "synthetic Piper speech; not physical microphone speech"
+  },
+  {
+    "expected": "The demonstration failed to grasp the object. Do not admit it as a successful motor episode.",
+    "actual": "The demonstration failed to grasp the object, to not admit it as a successful motor episode.",
+    "word_error_rate": 0.0625,
+    "tts_s": 0.5770642469869927,
+    "asr_s": 0.9813878969871439,
+    "provenance": "synthetic Piper speech; not physical microphone speech"
+  },
+  {
+    "expected": "The camera moved. Pause spatial guidance until reference markers and calibration are verified.",
+    "actual": "The camera moved, paused spatial guidance until reference markers and calibration are verified.",
+    "word_error_rate": 0.07692307692307693,
+    "tts_s": 0.7694547169958241,
+    "asr_s": 1.0477402670076117,
+    "provenance": "synthetic Piper speech; not physical microphone speech"
+  }
+]
