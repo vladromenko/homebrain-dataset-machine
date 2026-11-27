@@ -57,7 +57,8 @@ class Store:
 
     def remember(self, scope, text, source):
         with self.db() as db:
-            db.execute("INSERT INTO memory VALUES(NULL,?,?,0,?,?)", (scope,text,source,time.time()))
+            cursor = db.execute("INSERT INTO memory VALUES(NULL,?,?,0,?,?)", (scope,text,source,time.time()))
+            return cursor.lastrowid
 
     def forget(self, identifier):
         with self.db() as db:

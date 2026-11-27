@@ -1,172 +1,94 @@
-# Homebrain Dataset Machine
+# Homebrain Lab — robotics dataset workstation
 
-**A local AI workstation for guided robotics dataset collection.**
+Homebrain Lab is one local operator workspace over the existing SO101 Studio and Explorer robotics backends. It brings task selection, human control, native recording, validation, evidence review, simulation and an English assistant into the same application. It extends this repository's original independent Homebrain assistant; it is the same project.
 
-Homebrain Dataset Machine helps an operator prepare a recording, follow the approved demonstration procedure, and check whether the native recorder actually saved and admitted the episode. It combines local language models, English voice interaction, a laboratory camera, project documentation, and read-only project adapters.
+**Operator entry:** open the Homebrain Mac icon, then use `/lab` through its authenticated SSH connection. The Homebrain service listens only at `http://127.0.0.1:8090/lab`. Opening that address on a different computer requires the launcher tunnel; the application does not expose an anonymous LAN control endpoint.
 
-The application is independent from the robot projects it assists. SO101 Studio and other native applications remain responsible for raw recording, motor control, labels, calibration, and STOP. Homebrain adds an operator and verification layer; stopping it does not stop those applications.
+[Mac launcher download](https://github.com/vladromenko/robot-lab-menu/releases/download/v0.2.0/Homebrain_Mac_0.2.0.zip) · [Russian operator guide](docs/OPERATOR_RU.md) · [Acceptance evidence and remaining attended checks](docs/ACCEPTANCE.md) · [Deployment and rollback](docs/DEPLOYMENT.md)
 
-## The problem it solves
+## First recording
 
-Recording a useful robotics dataset involves more than pressing Record. The operator needs to know:
+1. Open **Projects → Robot demonstrations → Place a cube in the marked box**.
+2. Put the cube and box inside the **top** and **wrist** views. Keep the physical workspace clear.
+3. Choose **Prepare session**. The application checks native device identities and camera freshness and creates/reuses the native development dataset.
+4. At the robot, explicitly choose **Enable control** and follow the existing native leader/follower procedure. Startup and task selection do not enable motors.
+5. Choose **Start recording**, perform the placement, then **Finish recording**. Raw data is saved by Studio, including source timestamps and native calibration provenance.
+6. Wait for **Checking**, inspect the retained result, choose the directly observed outcome and assistance status, then **Confirm outcome → Next task**.
 
-- Which approved demonstration comes next and why it is needed.
-- Which native dataset to select and what equipment must be ready.
-- Whether the camera view is fresh and whether moving the camera invalidated geometry.
-- Whether an episode was saved, validated, rejected, or admitted for motor training.
-- Whether a failed manipulation is still useful evidence without being labeled a successful motor demonstration.
+The same shell provides native Tank docking and ROSMASTER docking/placement tasks. Smart Swarm adds its own staged instructions, timed observations, witness cameras, decision sealing and evaluator reveal. Its facade remains the authority for allocations, scientific gates, admission and splits. Study tasks remain gated until its actual development and station qualification requirements are met.
 
-Homebrain connects these questions to the project's actual cards, manifests and receipts. It does not create a competing recording plan or infer successful recording from a chat message.
+A raw save, technical integrity, successful unassisted motor demonstration and admitted scientific story are different results. The UI and journal retain these distinctions. An interrupted attempt is retained for inspection; reconnection never resumes movement automatically.
 
-## The collection workflow
+## Technology and purpose
 
-```text
-Approved project card and native status
-                 ↓
-      Readiness and attended preflight
-                 ↓
-  One physical instruction at a time
-                 ↓
-   Operator records in the native app
-                 ↓
-  Read saved episode + admission receipt
-                 ↓
-Explain acceptance, rejection, or missing evidence
-```
+| Technology | Contribution to the workstation |
+| --- | --- |
+| React 19, TypeScript, Vite 7 | One static, typed operator application served by FastAPI; no permanent frontend development server. |
+| shadcn/ui, Radix, Tailwind 4, Lucide | Consistent controls, dialogs, keyboard focus, task layout and visible STOP. |
+| assistant-ui custom runtime | Embedded text and voice conversation connected to the actual local agent runtime. |
+| FastAPI, Pydantic, generated JSON Schema/TypeScript | `homebrain.lab.v1` contracts shared by buttons, orchestration and permissioned tools. The frozen `robot-platform/1.0.0` scientific contract remains separate. |
+| SQLite WAL | Durable UI sessions, idempotent operation intents, uncertain outcomes, event cursors, one-use launch tickets and common memory. Native services still own actuator/writer state. |
+| Existing SO101 Studio and Explorer | Original controllers, leader mappings, watchdogs, STOP, LeRobot writers/exporters and validation. Additive adapters do not instantiate another recorder or hardware owner. |
+| Native ROS2 / MCAP and Rerun 0.44 | Namespaced sensor observations and a locally served replay/3D viewer. RRD is a derived diagnostic view; original MCAP stays in its native store. Unknown world transforms remain unknown. |
+| Existing individual/shared MuJoCo workers | Original CAD/models, simulation ownership and supported controls. Simulation namespaces and datasets remain distinct from physical robots; dynamics are not hardware calibrated. |
+| OpenCode V2 2.4.2 + llama.cpp + Qwen CPU | Real local model/tool loops, bounded roles and server-issued specialist sessions sharing one model pool. Shell/edit/web permissions are denied. No cloud model is required. |
+| SQLite FTS5 + incremental approved-source indexing | Revision/hash-bearing repository evidence and scoped memory retrieval; changed/deleted files update the index. Credentials and raw datasets are excluded. |
+| faster-whisper tiny.en int8, VAD, Piper | Local English push-to-talk, robotics vocabulary hints and spoken responses in the Mac browser or an explicitly selected local output. Server voice mode is opt-in and half duplex. |
+| Linux udev, sysfs, ALSA, V4L2 | Persistent USB video/audio identities, physical USB parent association, ownership checks, discovery, fallback input and reconnect recovery. |
+| OpenCV ORB/CLAHE/RANSAC, ArUco/PnP | Conservative stationary-reference checks, exposure/focus ambiguity handling and measured-marker geometry. No metric workspace is invented from an uncalibrated image. |
 
-For the Smart Swarm pilot, the assistant reads the existing SO101 card, native dataset binding and admission receipt. `pause`, `resume`, `next instruction` and repeat preserve the assistant's workflow state. Native attended preflight cannot be cleared by conversational confirmation alone.
+Versions are pinned in [frontend/package-lock.json](frontend/package-lock.json), [requirements.lock](requirements.lock) and the optional runtime manifests. Optional inference/viewer environments are separate from the native robot environments. OpenClaw was inspected as an alternative; it is not installed as a competing Homebrain supervisor. OpenCode's native built-in delegation did not pass the bounded local-model probe; Homebrain issues actual bounded child runtime sessions instead of trusting model-invented session IDs.
 
-## Technologies and how they serve the goal
+## Camera and audio
 
-| Technology | What it does here | Why it helps dataset collection |
-|---|---|---|
-| **Python 3.12 + FastAPI + Uvicorn** | Modular local service, typed HTTP endpoints and streaming responses. | Keeps the interface and project readers in one small service on the Jetson. |
-| **HTML/CSS/JavaScript** | Chat, overview preview, device indicators, voice controls and next-step panel. | Lets the operator use a Mac browser while working with the robots. |
-| **llama.cpp + replaceable GGUF models** | Local inference; the measured default is Qwen3.5-2B Q4_K_M on two CPU threads. | Provides explanations without sending lab prompts to a cloud inference API and leaves the GPU available to research workloads. |
-| **faster-whisper + CTranslate2 + Silero VAD** | English speech recognition, int8 CPU inference and speech filtering. | Turns bounded microphone utterances into commands and questions while reducing silence processing. |
-| **Piper + ONNX Runtime** | Local English speech synthesis with browser playback. | Gives short spoken instructions without requiring the operator to read the screen. |
-| **ALSA + udev + persistent USB identities** | Discovers and associates video/audio devices; tracks approved microphones across reconnection. | Avoids hard-coded device indices and separates device connection from permission to listen. |
-| **OpenCV ORB + RANSAC homography** | Checks distributed reference features and detects significant viewpoint changes. | Suspends stale spatial assumptions after camera movement; brightness or blur alone is insufficient movement evidence. |
-| **ArUco + PnP** | Detects markers and supports pose recovery from supplied calibration and fixed marker coordinates. | Enables traceable geometry checks when calibration exists, without inventing metric coordinates from an image. |
-| **SmolVLM2 500M, on demand** | Optional image interpretation, with a matched vision projector. | Adds advisory visual descriptions without running a large VLM on every frame. Dark inputs are refused because the measured dark-scene test was unreliable. |
-| **SQLite FTS5 + BGE-small ONNX** | Persistent source retrieval with paths, hashes, revisions and timestamps. | Grounds guidance in approved operator documentation and code. Full-text is the measured default; semantic fusion is available explicitly. |
-| **Versioned JSON project adapters + HTTPX + Pydantic** | Declares approved paths, read-only endpoints, capabilities and typed tool arguments. | Connects existing native applications without modifying their backends or moving their datasets. |
-| **Deterministic workflow + scoped specialist roles** | Maintains procedure state while sharing one model server. | Prevents a fresh recording plan being invented after each question and avoids a separate large model for every role. |
-| **psutil + resource governor** | Monitors memory, native recording/training state and shared-compute lease conflicts. | Unloads only Homebrain's inference process when a primary recording or training workflow needs resources. |
-| **pytest + pinned dependencies + SHA-256 asset locks** | Software regression tests and repeatable runtime/model installation. | Makes behavior and model identity auditable, including failed development probes. |
-| **Loopback binding + authentication + SSH forwarding** | Restricts access to the UI, model server and laboratory media. | Allows Mac microphone/camera access through localhost without publicly exposing lab streams. |
+The connected Logitech C920's video and microphone interfaces were associated with the same physical USB parent and serial using Linux discovery. A real eight-second ALSA capture ran while both native camera previews continued. This establishes video acquisition, microphone availability and concurrent transport, **not English speech accuracy**: no attended reference utterance was present in that capture.
 
-Runtime inference and speech processing are local. Installation downloads pinned dependencies and weights; no trained weights or raw laboratory media are stored in this Git repository. See [third-party notices](THIRD_PARTY_NOTICES.md) for software and model licenses.
+C920 video is currently owned by Studio. Homebrain consumes its read-only top view and preserves the native stream configuration. Its standalone acquisition profile requests 1280×720 at 5 fps; a shared native owner's resolution remains authoritative. Higher-resolution detail capture must use an authorized owner profile, rather than silently opening another device handle or changing an active scientific recording.
 
-## Implemented in this version
+Audio selection uses persistent `/dev/snd/by-id` identities and discovers the actual ALSA PCM interface. Authorized external microphones can take priority; the authorized C920 remains a fallback. A newly discovered input is visible before permission is granted. **Settings → English robotics speech test** measures word error rate against a real spoken reference, including SO101, ROSMASTER, LeRobot, MuJoCo and ACT terminology. No fabricated accuracy score is shipped.
 
-- English web chat with streaming model output and grounded readers for volatile facts.
-- Local ASR and TTS, push-to-talk, and an optional default-off ASR-gated “Hey, Homebrain” half-duplex loop.
-- C920 video/audio discovery, microphone authorization, configurable preferred input and recovery logic.
-- Shared-camera acquisition that preserves the native application's ownership and settings.
-- Bounded frame buffering, timestamp checks, camera-change handling and optional calibrated marker pose.
-- Read-only Smart Swarm pilot integration, plus Explorer, SO101 Studio, ROSMASTER and historical MuJoCo adapter examples.
-- Persistent conversation, inspectable memory, source retrieval and citations.
-- Advisory laboratory events with deduplication, cooldown and acknowledgement.
-- No motor, unrestricted shell, scientific-policy export or dataset mutation tool.
+Camera movement invalidates dependent geometry and triggers English guidance and a framing recheck. Focus breathing or insufficient stationary texture suspends geometry without asserting physical movement. The current implementation detects ArUco markers; AprilTag is discussed in [camera geometry notes](docs/CAMERA_GEOMETRY.md). Markers are optional for initial recording. Metric geometry requires actual intrinsics, marker dimensions and fixed reference coordinates.
 
-## Measured status and limits
+## Ownership, recovery and resources
 
-The original deployment was tested on a **Jetson Orin NX with 16 GB unified memory, Ubuntu 24.04, Python 3.12 and L4T 39.2.1**. These are deployment measurements, not minimum requirements or a claim of universal Jetson compatibility.
+- Studio and Explorer remain authoritative hardware owners. Starting Homebrain does not acquire actuators. Camera ownership is never taken over during a native service restart.
+- Focused browser packets extend native control leases. Chat focus/modal entry clears held inputs; blur, tab hiding, target change, gamepad loss and disconnect release owned control. There is no synthetic backend heartbeat.
+- Operation intents are persisted before effects. Duplicate keys return the same operation. A lost response becomes **unknown** and requires authoritative reconciliation; Start is never blindly repeated.
+- A Finish accepted by the native writer continues finalization after browser loss. Earlier connection loss follows native watchdogs and retains partial evidence.
+- USB recovery reopens only the previously authorized camera identity at an idle native boundary. It does not resume recording or control.
+- Idle / Recording / Training resource profiles retain the existing 8 GiB available-memory reservation. Conversational inference during physical recording remains gated until an attended recording-under-assistant-load qualification passes. Optional indexing, visual inference, replay derivation and checks yield first.
+- Raw datasets remain in their native locations. Shared catalogs contain references and receipts. There is no bulk migration or new raw dataset format.
 
-| Check | Actual result |
-|---|---|
-| Python software suite | 25 tests passed in the original deployment; rerun results for this repository are recorded with publication verification. |
-| Requested English acceptance phrases | 14 live HTTP requests exercised grounded handling, with physical visibility/readiness claims kept separate. |
-| Selected CPU model | Approximately 1.82 GiB peak process RSS and 8.93 median generated tokens/s on the small sequential probe. |
-| Model comparison | Liquid LFM2.5, Gemma4 E2B and Qwen3.5 were measured. Hallucinations and scope errors were retained in the reports. |
-| Local speech | Synthetic Piper-to-Whisper phrases tested; this does not establish physical operator speech accuracy. |
-| C920 | Actual video preview and bounded mono/stereo microphone captures worked simultaneously with native previews. |
-| Camera ownership | Studio already owned the C920. Its 640×480 stream was preserved; direct 720p/5-fps code awaits coordinated exclusive ownership. |
-| Retrieval | Expected source document appeared in the top four for 4/5 full-text questions and 3/5 hybrid questions in a small development probe. |
+See [acceptance status](docs/ACCEPTANCE.md) for the difference between implemented paths, native read-only checks, replay/synthetic tests and physical checks still awaiting an operator.
 
-Free-form model reasoning remains fallible. The application uses direct project readers for counts, native readiness, geometry validity and documented paper limits. A low training loss is not evidence of successful grasping; a saved episode is not automatically an admitted motor demonstration.
-
-**Still awaiting physical verification:** actual spoken-English recognition accuracy, physical USB unplug/replug, camera repositioning and calibrated recovery, external microphone hot-plug, Mac browser permissions/playback, and recording a valid scientific episode under simultaneous load. Full-duplex echo handling and the requested 300–500 reviewed specialization examples are unfinished. See [acceptance results](ACCEPTANCE.md), [benchmarks](BENCHMARKS.md) and [adaptation status](evaluation/ADAPTATION.md).
-
-The evaluation snapshots use normalized paths and device identifiers. Their measurements are historical evidence, not live status on a new installation.
-
-## Install and run
-
-Existing system requirements: Python 3.12, Git, CMake, a C++ compiler, NumPy/OpenCV, ALSA `arecord`, `udevadm` and `fuser`. The installer does not upgrade the OS, change drivers or modify another robotics environment.
-
-```bash
-git clone https://github.com/vladromenko/homebrain-dataset-machine.git
-cd homebrain-dataset-machine
-./install.sh /absolute/private/homebrain-work
-```
-
-Before using lab hardware, configure `config.local.json` with the actual persistent camera/microphone IDs. Set the approved roots and endpoint URLs in your local adapter manifests. The tracked manifests under `adapters/` use example paths under `/srv/robotics/`; they are not a promise that these paths exist on another computer. Keep host-specific adapters in the ignored `adapters.local/` directory and reference them from `config.local.json`.
-
-```bash
-./homebrain.sh start
-./homebrain.sh status
-./homebrain.sh unload   # stop Homebrain inference; keep the web tools available
-./homebrain.sh stop
-```
-
-Open `http://localhost:8090` on the host. The private login token is created in `runtime/access-token`; no token is committed. Model files, memory, transcripts and logs remain in private local storage.
-
-The first start can take longer than a warm request. General model answers may take tens of seconds on the tested CPU and are bounded at 60 seconds. Grounded recording/status instructions use the direct readers and responded in under a second in the final deployment probe.
-
-### Use a Mac browser
-
-Forward the private UI and native Studio with SSH:
-
-```bash
-ssh -N -o ExitOnForwardFailure=yes \
-  -L 8090:127.0.0.1:8090 \
-  -L 8020:127.0.0.1:8020 \
-  USER@JETSON_HOST
-```
-
-Then open `http://localhost:8090`, sign in with the local token and grant the browser's normal microphone permission if needed. Never expose the model server or laboratory media ports publicly. The optional [Mac launcher](Mac_Homebrain.command) accepts the host, SSH user and installation directory through environment variables.
-
-## Example operator interaction
-
-1. Ask **“What should I record next?”**
-2. Read the actual approved card and dataset binding.
-3. Complete the existing project's attended preflight in its native interface.
-4. Follow one instruction at a time; ask questions, pause or repeat without losing the session.
-5. Record through the native application.
-6. Ask **“Has my last demonstration been saved?”**
-7. Check the separate validation/admission receipt before counting it as motor-training data.
-
-No physical success or current dataset count is implied by this example. The project records remain authoritative.
-
-## Repository map
+## Source layout
 
 ```text
-homebrain/        supervisor, tools, adapters, speech, vision, retrieval and web UI
-adapters/         versioned example project manifests
-scripts/          pinned installation helper
-assets.lock.json  weight URLs, revisions, sizes and hashes; no weights
-requirements.lock exact isolated Python dependencies
-evaluation/       measured probes, failures, synthetic examples and held-out cases
-tests/            software tests; no automatic robot movement
-docs/             detailed operator guide
+frontend/                    React operator workspace and assistant-ui
+homebrain/lab/               common contract, journal, workflow and recovery
+homebrain/native_adapters/   fixed native transports and browser control bridge
+homebrain/project_adapters/  real Smart Swarm facade transport/presentation
+homebrain/agent_runtime/     OpenCode adapter, scoped MCP tools and investigation
+homebrain/{audio,vision,...} reused local media, memory and resource modules
+contracts/                  canonical schemas and launcher descriptor schema
+native_patches/             narrow tested native backend adapters
+handover/                   portable descriptor examples, never credentials
 ```
 
-- [Detailed operator guide](docs/OPERATOR_GUIDE.md)
-- [Acceptance and physical verification](ACCEPTANCE.md)
-- [Measured benchmarks](BENCHMARKS.md)
-- [Implementation research and reuse decisions](RESEARCH_REVIEW.md)
-- [Third-party licenses and attribution](THIRD_PARTY_NOTICES.md)
+## Development and installation
 
-## Verify changes
+The deployed Homebrain installation is configured once with private native service/device profiles. Operators do not enter paths, ports or camera indices for each attempt. A new installation must supply its own native station profiles and model locations; workstation-specific configuration, credentials, media, model weights and runtime databases are excluded from Git.
 
 ```bash
+python3 -m venv --system-site-packages .venv
+.venv/bin/pip install -r requirements.lock
+npm ci --prefix frontend
+npm run build --prefix frontend
+.venv/bin/python scripts/generate-contracts.py
 .venv/bin/python -m pytest -q
 node --check homebrain/static/app.js
 ```
 
-The current test boundary uses an installation's local configuration. Tests do not start native recording, change calibration or command robot motors. Keep real observations separate from synthetic development examples. The application is advisory; native controls and STOP mechanisms remain authoritative.
+Linux OpenCV/NumPy and the installed native robotics environments are prerequisites on the Jetson. Do not upgrade the OS, JetPack or native environments to install this UI. Apply only the reviewed matching-baseline native adapter patches at an idle boundary; [deployment instructions](docs/DEPLOYMENT.md) describe verification and rollback.
 
-## License
-
-Application source: **GPL-3.0-or-later**. Third-party components and model weights retain their own licenses. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Homebrain Lab is independent of the scientific recording pipelines. Its assistant knowledge, voice and diagnostic derived views are operator aids, never automatic scientific-policy inputs. DogFleet source, data, environments and compute are excluded entirely.

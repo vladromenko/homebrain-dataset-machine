@@ -1,0 +1,406 @@
+diff --git a/src/so101_lab/app.py b/src/so101_lab/app.py
+index 804b5ff..39fe854 100644
+--- a/src/so101_lab/app.py
++++ b/src/so101_lab/app.py
+@@ -1,6 +1,7 @@
+ import asyncio,json,time,os,threading
+ from pathlib import Path
+ from contextlib import asynccontextmanager
++from . import lab_lease
+ from fastapi import FastAPI,HTTPException,Request,WebSocket,WebSocketDisconnect
+ from fastapi.responses import FileResponse,Response
+ from fastapi.staticfiles import StaticFiles
+@@ -47,7 +48,13 @@ async def lifespan(app):
+     camera_preview=CameraPreview()
+     from .teleoperation import TeleoperationManager
+     teleoperation=TeleoperationManager(root=ROOT)
++    from .camera_recovery import monitor
++    import asyncio
++    camera_recovery=asyncio.create_task(monitor(camera_preview,manager,teleoperation))
++    browser_watchdog=asyncio.create_task(lab_lease.monitor(manager,teleoperation,request_hardware_stop))
+     yield
++    camera_recovery.cancel()
++    browser_watchdog.cancel()
+     if teleoperation:
+         from starlette.concurrency import run_in_threadpool
+         teleoperation.stop()
+@@ -140,6 +147,9 @@ async def start(request:Request):
+         did=data.pop('dataset_id')
+         generation=data.pop('expected_stop_generation',hardware_stop_generation)
+         if generation!=hardware_stop_generation:raise ValueError('Запуск отменён предыдущим STOP. Обновите статус перед новым нажатием')
++        managed=bool(request.headers.get('X-Homebrain-Operation') or not request.headers.get('Origin'))
++        browser_operation=lab_lease.dataset_guard(did,hardware_stop_generation,managed)
++        if request.headers.get('X-Homebrain-Operation') and request.headers['X-Homebrain-Operation']!=browser_operation:raise ValueError('Recording browser lease identity changed')
+         def begin():
+             with hardware_control_lock:
+                 if policy_is_active():raise ValueError('Сначала остановите политику кнопкой STOP рук перед записью')
+@@ -150,25 +160,33 @@ async def start(request:Request):
+                 if hardware and camera_preview:camera_preview.start(explicit_user_start=True,settings=dataset.get('settings',{}))
+                 with hardware_start_guard:
+                     if generation!=hardware_stop_generation:raise ValueError('Запуск отменён кнопкой STOP. Запись не началась')
+-                    return manager.start(did,explicit_user_start=True,camera_provider=camera_preview if hardware else None,**{k:v for k,v in data.items() if k!='explicit_user_start'})
++                    lab_lease.dataset_guard(did,hardware_stop_generation,managed)
++                    result=manager.start(did,explicit_user_start=True,camera_provider=camera_preview if hardware else None,**{k:v for k,v in data.items() if k!='explicit_user_start'})
++                    lab_lease.activate(browser_operation)
++                    return result
+         from starlette.concurrency import run_in_threadpool
+         return await run_in_threadpool(begin)
+     except Exception as e:raise HTTPException(409,str(e))
+ 
+ @app.post('/api/teleoperation/{action}')
+-def teleoperation_action(action:str):
++def teleoperation_action(action:str,request:Request=None,expected_stop_generation:int|None=None):
+     if teleoperation is None:raise HTTPException(503,'Телеоперация ещё запускается')
+     try:
+         if action=='stop':return request_hardware_stop()
+         if action!='start':raise ValueError('Неизвестная команда телеоперации')
+-        generation=hardware_stop_generation
++        generation=hardware_stop_generation if expected_stop_generation is None else expected_stop_generation
++        if generation!=hardware_stop_generation:raise ValueError('Start cancelled by STOP; refresh status')
++        operation=lab_lease.operation_guard(request.headers.get('X-Homebrain-Operation') if request else None,generation)
+         with hardware_control_lock:
+             if manager.status().get('active'):raise ValueError('Сначала остановите запись. Она уже управляет руками')
+             if policy_is_active():raise ValueError('Сначала остановите политику кнопкой STOP рук перед телеоперацией')
+             if teleoperation.status().get('active'):return teleoperation.status()
+             with hardware_start_guard:
+                 if generation!=hardware_stop_generation:raise ValueError('Запуск рук отменён кнопкой STOP')
+-                return teleoperation.start(explicit_user_start=True)
++                lab_lease.operation_guard(operation,hardware_stop_generation)
++                result=teleoperation.start(explicit_user_start=True)
++                lab_lease.activate(operation)
++                return result
+     except Exception as e:raise HTTPException(409,str(e))
+ 
+ @app.post('/api/preview/{action}')
+@@ -185,7 +203,9 @@ def preview_action(action:str):
+ def record_action(action:str):
+     try:
+         if action=='stop':request_hardware_stop();return manager.status()
+-        return manager.command(action)
++        result=manager.command(action)
++        if action=='end':lab_lease.finish()
++        return result
+     except Exception as e:raise HTTPException(409,str(e))
+ @app.get('/api/frame/{camera}')
+ def frame(camera:str):
+@@ -355,3 +375,8 @@ async def websocket(ws:WebSocket):
+ @app.get('/')
+ def index():return FileResponse(ROOT/'static/index.html',headers={'Cache-Control':'no-store'})
+ app.mount('/static',StaticFiles(directory=ROOT/'static'),name='static')
++
++lab_lease.install(app,lambda:manager.status() if manager else {},lambda:teleoperation.status() if teleoperation else {},request_hardware_stop)
++
++from .lab_status import install as install_lab_status
++install_lab_status(app,lambda:manager,lambda:teleoperation,lambda:camera_preview,lambda:hardware_stop_generation)
+diff --git a/src/so101_lab/camera_recovery.py b/src/so101_lab/camera_recovery.py
+new file mode 100644
+index 0000000..c7b6f6b
+--- /dev/null
++++ b/src/so101_lab/camera_recovery.py
+@@ -0,0 +1,35 @@
++"""Recover only previously authorized camera-only previews, never active recordings."""
++import asyncio
++import time
++from .hardware import CameraCapture
++
++
++def recover(preview, recording, teleoperation):
++    if recording.get('active') or recording.get('hardware_open') or teleoperation.get('active'):
++        return []
++    recovered = []
++    with preview.lock:
++        if preview.borrowers:
++            return []
++        for name, camera in list(preview.cameras.items()):
++            if camera.error:
++                camera.close()
++                replacement = CameraCapture(name, camera.device, camera.cfg)
++                preview.cameras[name] = replacement
++                try:
++                    replacement.start()
++                    replacement.info['recovery_generation'] = camera.info.get('recovery_generation', 0)+1
++                    replacement.info['recovery_policy'] = 'same persistent identity and native settings; no control resume'
++                    recovered.append(name)
++                except Exception as error:
++                    replacement.error = 'Camera reconnect pending: '+str(error)
++    return recovered
++
++
++async def monitor(preview, manager, teleoperation):
++    while True:
++        try:
++            await asyncio.to_thread(recover, preview, manager.status(), teleoperation.status())
++        except (OSError, RuntimeError, ValueError):
++            pass
++        await asyncio.sleep(2)
+diff --git a/src/so101_lab/lab_lease.py b/src/so101_lab/lab_lease.py
+new file mode 100644
+index 0000000..bd389d0
+--- /dev/null
++++ b/src/so101_lab/lab_lease.py
+@@ -0,0 +1,122 @@
++"""Native watchdog for Homebrain browser leases; other native callers keep their behavior."""
++import asyncio
++import json
++import os
++import re
++import time
++from pathlib import Path
++from fastapi import HTTPException
++from pydantic import BaseModel
++
++active = None
++last_error = None
++BOOT_ID = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
++
++
++def folder():
++    default = Path.home()/'.local/share/homebrain-lab/handover'
++    return Path(os.environ.get('HOMEBRAIN_LAB_HANDOVER_DIR', default)).parent/'leases'
++
++
++def read(path):
++    value = json.loads(path.read_text())
++    if value.get('contract_version') != 'homebrain.lab.v1':
++        raise ValueError('Unsupported Homebrain browser lease')
++    return value
++
++
++def validate(value, generation):
++    remaining = value['expires']-time.monotonic()
++    if value.get('boot_id') != BOOT_ID or value['revoked'] or value.get('state') == 'done' or not 0 <= remaining <= 1:
++        raise ValueError('Homebrain browser lease expired. Focus the workspace and explicitly enable again.')
++    if value['expected_generation'] != generation:
++        raise ValueError('Homebrain Start was fenced by STOP. Reconcile the pending attempt.')
++    return value['operation_id']
++
++
++def dataset_guard(dataset, generation, managed=True):
++    if not managed or not re.fullmatch('ds_[a-f0-9]{16}', dataset):
++        return None
++    path = folder()/('dataset-'+dataset+'.json')
++    if not path.exists():
++        return None
++    value = read(path)
++    return validate(value, generation)
++
++
++def operation_guard(operation, generation):
++    if operation is None:
++        return None
++    if not re.fullmatch('[a-f0-9]{32}', operation):
++        raise ValueError('Invalid browser lease operation')
++    return validate(read(folder()/('operation-'+operation+'.json')), generation)
++
++
++def activate(operation):
++    global active
++    active = {'operation_id':operation, 'finalizing':None} if operation else None
++
++
++def finish():
++    if active:
++        active['finalizing'] = time.monotonic()
++
++
++def expired():
++    if not active:
++        return False
++    try:
++        value = read(folder()/('operation-'+active['operation_id']+'.json'))
++        return value.get('boot_id') != BOOT_ID or value['revoked'] or not 0 <= value['expires']-time.monotonic() <= 1
++    except (OSError, ValueError, KeyError):
++        return True
++
++
++def must_stop(recording, teleoperation):
++    if not active:
++        return False
++    if not recording.get('active') and not teleoperation.get('active'):
++        activate(None)
++        return False
++    if not expired():
++        return False
++    finalizing = active['finalizing']
++    if finalizing and recording.get('state') == 'saving':
++        return False
++    if finalizing and recording.get('state') == 'recording' and time.monotonic()-finalizing < 3:
++        return False
++    return True
++
++
++async def monitor(manager, teleoperation, stop):
++    global last_error
++    while True:
++        if must_stop(manager.status(), teleoperation.status()):
++            try:
++                await asyncio.to_thread(stop)
++                activate(None)
++                last_error = None
++            except Exception as error:
++                last_error = str(error)
++        await asyncio.sleep(.1)
++
++
++class StopOwned(BaseModel):
++    operation_id: str
++
++
++def install(app, manager_status, teleoperation_status, stop):
++    @app.get('/api/lab/lease')
++    def status():
++        return {'active':active, 'error':last_error, 'lease_seconds':.7, 'watchdog_seconds':.1,
++                'physical_stop_confirmed':False}
++
++    @app.post('/api/lab/lease/stop')
++    def stop_owned(body: StopOwned):
++        if not active or active['operation_id'] != body.operation_id:
++            return {'requested':False, 'reason':'This browser no longer owns native control'}
++        if active['finalizing'] and manager_status().get('state') in ('recording','saving'):
++            return {'requested':False, 'reason':'Native finalization continues; watchdog closes controls after saving'}
++        result = stop()
++        activate(None)
++        return {'requested':True, 'native':result}
+diff --git a/src/so101_lab/lab_status.py b/src/so101_lab/lab_status.py
+new file mode 100644
+index 0000000..43c0a0f
+--- /dev/null
++++ b/src/so101_lab/lab_status.py
+@@ -0,0 +1,39 @@
++"""Cheap shared-stream status; dataset/job catalogs remain explicit reads."""
++import json
++from fastapi import HTTPException
++from . import jobs
++
++
++def install(app, manager, teleoperation, preview, generation):
++    @app.get('/api/lab/status')
++    def status():
++        return {'hardware_stop_generation':generation(), 'resources':{'inspection':'Run native preflight when preparing'},
++                'recording':manager().status() if manager() else {},
++                'teleoperation':teleoperation().status() if teleoperation() else {},
++                'preview':preview().status() if preview() else {},'jobs':live_jobs()}
++
++    @app.get('/api/lab/jobs/{identifier}')
++    def job(identifier: str):
++        try:
++            path=jobs.job_dir(identifier)
++            value=json.loads((path/'job.json').read_text())
++            if value['state'] in jobs.ACTIVE and (path/'pid').exists():
++                pid=int((path/'pid').read_text())
++                if not jobs.alive(identifier,pid):
++                    value.update(state='interrupted',error='Native worker stopped; artifacts retained')
++            return value
++        except (ValueError,OSError) as error:
++            raise HTTPException(404,str(error)) from error
++
++
++def live_jobs():
++    active=[]
++    for path in jobs.DIR.glob('*/pid'):
++        try:
++            identifier=path.parent.name
++            if jobs.alive(identifier,int(path.read_text())):
++                value=json.loads((path.parent/'job.json').read_text())
++                active.append({key:value.get(key) for key in ('id','kind','state','progress')})
++        except (OSError,ValueError):
++            pass
++    return active
+diff --git a/tests/test_camera_recovery.py b/tests/test_camera_recovery.py
+new file mode 100644
+index 0000000..ffc3241
+--- /dev/null
++++ b/tests/test_camera_recovery.py
+@@ -0,0 +1,26 @@
++import threading
++from types import SimpleNamespace
++from so101_lab.camera_recovery import recover
++
++
++def test_preview_reconnect_retains_identity_and_settings(monkeypatch):
++    old = SimpleNamespace(error='USB disconnected', device='/dev/persistent-camera', cfg={'fps':30}, info={}, close=lambda:None)
++    preview = SimpleNamespace(lock=threading.RLock(), borrowers=set(), cameras={'top':old})
++    class Replacement:
++        def __init__(self, name, device, cfg):
++            self.name,self.device,self.cfg,self.info=name,device,cfg,{}
++        def start(self):
++            self.error=None
++    monkeypatch.setattr('so101_lab.camera_recovery.CameraCapture', Replacement)
++    assert recover(preview, {'active':False}, {'active':False}) == ['top']
++    assert preview.cameras['top'].device == old.device
++    assert preview.cameras['top'].cfg == old.cfg
++    assert preview.cameras['top'].info['recovery_generation'] == 1
++
++
++def test_active_recording_or_borrower_is_never_reopened(monkeypatch):
++    preview = SimpleNamespace(lock=threading.RLock(), borrowers=set(), cameras={'top':SimpleNamespace(error='USB disconnected')})
++    monkeypatch.setattr('so101_lab.camera_recovery.CameraCapture', lambda *args:(_ for _ in ()).throw(AssertionError('No camera opens')))
++    assert recover(preview, {'active':True}, {}) == []
++    preview.borrowers.add('native-recorder')
++    assert recover(preview, {}, {}) == []
+diff --git a/tests/test_lab_lease.py b/tests/test_lab_lease.py
+new file mode 100644
+index 0000000..15fc3dc
+--- /dev/null
++++ b/tests/test_lab_lease.py
+@@ -0,0 +1,60 @@
++import json
++import time
++import pytest
++from so101_lab import lab_lease
++
++
++def receipt(tmp_path, monkeypatch):
++    monkeypatch.setattr(lab_lease, 'folder', lambda:tmp_path)
++    value = {'contract_version':'homebrain.lab.v1','operation_id':'a'*32,'expected_generation':5,
++             'boot_id':lab_lease.BOOT_ID,'expires':time.monotonic()+.7,'revoked':False,'state':'intent'}
++    path = tmp_path/('dataset-ds_'+'b'*16+'.json')
++    path.write_text(json.dumps(value))
++    return path,value
++
++
++def test_delayed_project_worker_cannot_refresh_away_stop_fence(tmp_path, monkeypatch):
++    path,value = receipt(tmp_path, monkeypatch)
++    assert lab_lease.dataset_guard('ds_'+'b'*16,5) == 'a'*32
++    with pytest.raises(ValueError):
++        lab_lease.dataset_guard('ds_'+'b'*16,6)
++    value['revoked']=True
++    path.write_text(json.dumps(value))
++    with pytest.raises(ValueError):
++        lab_lease.dataset_guard('ds_'+'b'*16,5)
++
++
++def test_native_finalization_survives_browser_loss(tmp_path, monkeypatch):
++    path,value = receipt(tmp_path, monkeypatch)
++    (tmp_path/('operation-'+'a'*32+'.json')).write_text(json.dumps({**value,'expires':0}))
++    lab_lease.activate('a'*32)
++    lab_lease.finish()
++    assert not lab_lease.must_stop({'active':True,'state':'saving'}, {'active':False})
++    assert lab_lease.must_stop({'active':True,'state':'ready'}, {'active':False})
++    lab_lease.activate(None)
++
++
++def test_unmanaged_native_dataset_has_no_new_requirement(tmp_path, monkeypatch):
++    monkeypatch.setattr(lab_lease, 'folder', lambda:tmp_path)
++    assert lab_lease.dataset_guard('ds_'+'c'*16,9) is None
++    assert lab_lease.operation_guard(None,9) is None
++
++
++def test_previous_boot_and_implausible_future_lease_are_rejected(tmp_path, monkeypatch):
++    path, value = receipt(tmp_path, monkeypatch)
++    value['boot_id'] = 'previous-boot'
++    path.write_text(json.dumps(value))
++    with pytest.raises(ValueError):
++        lab_lease.dataset_guard('ds_'+'b'*16, 5)
++    value.update(boot_id=lab_lease.BOOT_ID, expires=time.monotonic()+1000)
++    path.write_text(json.dumps(value))
++    with pytest.raises(ValueError):
++        lab_lease.dataset_guard('ds_'+'b'*16, 5)
++
++
++def test_completed_homebrain_proof_requires_a_fresh_browser_intent(tmp_path, monkeypatch):
++    path, value = receipt(tmp_path, monkeypatch)
++    value['state'] = 'done'
++    path.write_text(json.dumps(value))
++    with pytest.raises(ValueError):
++        lab_lease.dataset_guard('ds_'+'b'*16, 5)

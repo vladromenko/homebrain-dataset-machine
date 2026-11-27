@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "homebrain.launcher.descriptor.v1",
+  "type": "object",
+  "required": ["descriptor_version", "compatible_contract_version", "source_commit", "supported_launcher_versions", "service", "operations", "authentication"],
+  "properties": {
+    "descriptor_version": {"const": "homebrain.lab.v1"},
+    "compatible_contract_version": {"const": "homebrain.lab.v1"},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "supported_launcher_versions": {"type": "array", "items": {"type": "string"}},
+    "deployed": {"type": "boolean"},
+    "service": {"type": "object", "required": ["id", "origin", "workspace_path", "health_path"], "properties": {"id": {"const": "homebrain-lab"}, "origin": {"type": "string", "pattern": "^http://127\\.0\\.0\\.1:[0-9]+$"}, "workspace_path": {"const": "/lab"}, "health_path": {"const": "/api/health"}}},
+    "operations": {"type": "object", "required": ["status", "start", "handoff"], "additionalProperties": {"type": "object", "required": ["argv", "sha256", "cwd"], "properties": {"argv": {"type": "array", "minItems": 2, "items": {"type": "string"}}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "cwd": {"type": "string"}}}},
+    "authentication": {"type": "object", "required": ["method", "operation", "post_path", "field"], "properties": {"method": {"const": "ssh-once-form-post-v1"}, "operation": {"const": "handoff"}, "post_path": {"const": "/api/launcher/handoff"}, "field": {"const": "ticket"}}}
+  }
+}

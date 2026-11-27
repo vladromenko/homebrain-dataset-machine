@@ -14,3 +14,9 @@ adapters.local/
 work/
 
 .venv
+frontend/node_modules/
+homebrain/static/lab/
+config.dev.json
+
+*.tsbuildinfo
+frontend/node_modules

@@ -14,6 +14,7 @@ class Events:
                  "time":time.time(),"acknowledged":False,"audience":"operator"}
         self.queue = sorted((self.queue+[event])[-30:],key=lambda e:(e["priority"],-e["time"]))
         self.store.audit("advisory_event",event)
+        return event
 
     def acknowledge(self, identifier):
         for event in self.queue:

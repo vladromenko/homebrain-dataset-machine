@@ -2,6 +2,7 @@
 import asyncio
 import time
 from collections import deque
+from pathlib import Path
 import cv2
 import httpx
 import numpy as np
@@ -39,6 +40,10 @@ class Vision:
         async with httpx.AsyncClient(timeout=3,trust_env=False) as client:
             status = (await client.get(self.config["camera_shared_status"])).json()
             preview = status.get("preview",{}).get("cameras",{}).get("top",{})
+            device = preview.get('stream', {}).get('device')
+            expected = Path(self.config['camera_id'])
+            if not device or not expected.exists() or Path(device).resolve() != expected.resolve():
+                raise OSError('Native overview camera identity differs from the configured C920')
             age = preview.get("last_frame_age_ms")
             if age is None or age>1500 or not preview.get("connected"):
                 raise OSError("Native camera has no verified fresh timestamp")
@@ -57,9 +62,11 @@ class Vision:
                     foreign = await asyncio.to_thread(owners,self.config["camera_id"])
                     import os
                     foreign = [pid for pid in foreign if pid != os.getpid()]
-                    image = await self.shared() if foreign else await asyncio.to_thread(self.direct)
+                    image = await self.shared() if self.config.get("camera_shared_url") or foreign else await asyncio.to_thread(self.direct)
                     self.accept(image,self.config["camera_id"])
             except (OSError,ValueError,AttributeError,cv2.error,httpx.HTTPError) as error:
+                if self.state == 'Ready':
+                    self.scene.invalidate('Overview stream interrupted; workspace references require recheck')
                 self.state = str(error)
                 self.scene.state["geometry_valid"] = False
             await asyncio.sleep(1/max(1,self.config["camera_fps"]))

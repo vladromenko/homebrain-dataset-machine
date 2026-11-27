@@ -1,0 +1,559 @@
+diff --git a/explorer4/app.py b/explorer4/app.py
+index eda3f8b..22a6ae7 100644
+--- a/explorer4/app.py
++++ b/explorer4/app.py
+@@ -65,6 +65,8 @@ def physical_so_snapshot():
+ 
+ recording_pages.install_physical(physical_so_snapshot)
+ live_preview=LivePreview(session,stop_requested=lambda:Server.instance.should_exit)
++from .lab_api import install as install_lab
++lab_bridge=install_lab(app,control,session)
+ ROBOT_NAMES={'so101':'SO-101','tank':'Tank','rosmaster':'ROSMASTER'}
+ DEVICE_PATHS={'leader':'/dev/so101-leader','follower':'/dev/so101-follower',
+               'wrist':'/dev/v4l/by-id/usb-HD_USB_Camera_HD_USB_Camera-video-index0'}
+diff --git a/explorer4/lab_api.py b/explorer4/lab_api.py
+new file mode 100644
+index 0000000..66c9142
+--- /dev/null
++++ b/explorer4/lab_api.py
+@@ -0,0 +1,217 @@
++"""Additive Homebrain boundary over the existing application singletons."""
++import asyncio
++import time
++import uuid
++from fastapi import HTTPException, WebSocket, WebSocketDisconnect
++from pydantic import BaseModel, ConfigDict, Field
++from . import catalog, collection
++
++
++class Start(BaseModel):
++    model_config = ConfigDict(extra='forbid')
++    owner: str = Field(min_length=10, max_length=100)
++    profile: str = Field(pattern=r'^tank_dock(_rgbd_lidar)?$')
++    scene: str = Field(min_length=1, max_length=200)
++    record: bool = True
++    expected_generation: int
++    category: str = Field(default='demonstration', pattern=r'^(demonstration|correction)$')
++    collection_id: str | None = None
++
++
++class Finish(BaseModel):
++    model_config = ConfigDict(extra='forbid')
++    owner: str
++    outcome: str = Field(pattern=r'^(success|failure|aborted)$')
++
++
++class Bridge:
++    def __init__(self, control, session):
++        self.control, self.session = control, session
++        self.connections = {}
++
++    def status(self):
++        sample = self.session.latest or {}
++        stamp = sample.get('observation_timestamp_ns')
++        return {'contract_version': 'homebrain.lab.v1', 'generation': self.control.generation,
++                'robot': self.control.robot, 'owner': self.control.owner,
++                'session_id': self.control.session, 'phase': self.session.phase,
++                'thread_active': bool(self.session.thread and self.session.thread.is_alive()),
++                'recording': self.session.record_requested, 'frames': self.session.frame_count,
++                'last_episode_id': self.session.last_episode_id, 'error': self.session.error,
++                'sample_age_ms': (time.monotonic_ns()-stamp)/1e6 if stamp else None,
++                'sample': public_sample(sample), 'stop_reason': self.control.last_stop_reason,
++                'physical_stop_confirmed': False}
++
++    def require(self, owner):
++        stamp = self.connections.get(owner, 0)
++        if time.monotonic()-stamp > .7:
++            raise PermissionError('A focused live browser control connection is required')
++
++    async def start(self, body):
++        self.require(body.owner)
++        generation = body.expected_generation
++        if generation != self.control.generation:
++            raise ValueError('STOP generation changed; refresh before explicit Start')
++        if self.session.thread and self.session.thread.is_alive():
++            if self.control.owner != body.owner or self.session.record_requested:
++                raise PermissionError('The native session is already owned or recording')
++            self.session.finish('aborted', 'Homebrain manual-to-record handover')
++            generation += 1
++            await asyncio.to_thread(self.session.thread.join, 8)
++        self.require(body.owner)
++        with self.control.lock:
++            if generation != self.control.generation:
++                raise PermissionError('Start cancelled by STOP during handover')
++            if self.control.robot != 'tank':
++                self.control.select('tank')
++            self.session.start(body.owner, body.profile, body.scene, record=body.record,
++                               category=body.category, collection_id=body.collection_id)
++        return self.status()
++
++    def finish(self, body):
++        self.require(body.owner)
++        if self.control.owner != body.owner:
++            raise PermissionError('Only the current native owner may finish')
++        self.session.finish(body.outcome, 'Homebrain finish requested')
++        return self.status()
++
++    async def control_socket(self, websocket):
++        await websocket.accept()
++        owner = 'homebrain-' + uuid.uuid4().hex
++        self.connections[owner] = time.monotonic()
++        try:
++            await websocket.send_json({'owner': owner, 'status': self.status()})
++            while True:
++                packet = await asyncio.wait_for(websocket.receive_json(), timeout=1)
++                await self.packet(owner, packet)
++                await websocket.send_json({'owner': owner, 'status': self.status()})
++        except (WebSocketDisconnect, TimeoutError):
++            pass
++        finally:
++            self.connections.pop(owner, None)
++            if self.control.owner == owner:
++                self.control.clear_base_inputs()
++                self.session.finish('aborted', 'Homebrain browser lease lost; partial evidence retained')
++
++    async def packet(self, owner, packet):
++        if packet.get('kind') == 'heartbeat':
++            self.connections[owner] = time.monotonic()
++            self.control.heartbeat(owner)
++        elif packet.get('kind') == 'key':
++            self.require(owner)
++            self.control.base_key(owner, packet.get('key'), packet.get('pressed') is True,
++                                  'homebrain:'+str(packet.get('source', packet.get('key')))[:50])
++        elif packet.get('kind') == 'clear_inputs':
++            if self.control.owner == owner:
++                self.control.clear_base_inputs()
++        elif packet.get('kind') == 'clear':
++            if self.control.owner == owner:
++                self.control.clear_base_inputs()
++                self.session.finish('aborted', 'Homebrain focus/target cleared')
++        else:
++            raise ValueError('Unsupported control packet')
++
++
++def public_sample(sample):
++    keys = {'observation_timestamp_ns', 'camera_missing', 'observation.state', 'motion_sensors', 'state_kind', 'state_valid', 'measured_response_kind', 'battery_voltage', 'battery_source', 'imu_raw', 'imu_agent_received_ns'}
++    visible = {key: value.tolist() if hasattr(value, 'tolist') else value for key, value in sample.items() if key in keys}
++    visible['images'] = {role: {key: value for key, value in image.items() if key != 'image'}
++                         for role, image in sample.get('images', {}).items()}
++    return visible
++
++
++def install(app, control, session):
++    bridge = Bridge(control, session)
++
++    @app.get('/api/lab/status')
++    def status():
++        return bridge.status()
++
++    @app.post('/api/lab/record/start')
++    async def start(body: Start):
++        try:
++            return await bridge.start(body)
++        except (ValueError, PermissionError, RuntimeError) as error:
++            raise HTTPException(409, str(error)) from error
++
++    @app.post('/api/lab/record/finish')
++    def finish(body: Finish):
++        try:
++            return bridge.finish(body)
++        except (ValueError, PermissionError, RuntimeError) as error:
++            raise HTTPException(409, str(error)) from error
++
++    @app.post('/api/lab/stop')
++    def stop():
++        control.clear_base_inputs()
++        control.stop('Homebrain independent STOP')
++        return bridge.status()
++
++    @app.websocket('/api/lab/control')
++    async def control_socket(websocket: WebSocket):
++        await bridge.control_socket(websocket)
++
++    from .lab_observation import install as install_observation
++    install_observation(app)
++    from .lab_collection import install as install_collection
++    install_collection(app)
++    install_readback(app)
++    install_simulation(app)
++    return bridge
++
++
++def install_readback(app):
++    @app.get('/api/lab/capabilities')
++    def capabilities():
++        from .profiles import PROFILES, SIM_PROFILES
++        return {'profiles': PROFILES, 'simulation_profiles': SIM_PROFILES,
++                'native_owner': 'Explorer', 'catalog': '/api/lab/recordings'}
++
++    @app.get('/api/lab/rosmaster/operations/{identifier}')
++    def operation(identifier: str):
++        from .rosmaster_console import LAB_ACKS
++        return LAB_ACKS.get(identifier, {'operation_id':identifier,'status':'pending'})
++
++    @app.get('/api/lab/recordings')
++    def recordings():
++        return {'episodes': catalog.rows('episodes')[:100], 'collections': collection.overview()}
++
++    @app.get('/api/lab/jobs')
++    def jobs():
++        return {'jobs': catalog.rows('jobs')[:100]}
++
++
++def simulation_service(kind):
++    from .sim_service import service as individual
++    from .fleet_service import service as shared
++    if kind not in {'individual', 'shared'}:
++        raise ValueError('Unknown simulation namespace')
++    return individual if kind == 'individual' else shared
++
++
++class SimulationAction(BaseModel):
++    model_config = ConfigDict(extra='forbid')
++    command: str
++    arguments: dict = {}
++
++
++def install_simulation(app):
++    @app.get('/api/lab/simulation/{kind}')
++    def status(kind: str):
++        try:
++            return simulation_service(kind).request()
++        except Exception as error:
++            raise HTTPException(503, str(error)) from error
++
++    @app.post('/api/lab/simulation/{kind}')
++    def action(kind: str, body: SimulationAction):
++        allowed = {'start', 'close', 'claim', 'release', 'pause', 'profile', 'reset', 'heartbeat', 'target', 'demonstrate'}
++        allowed |= {'record', 'finish'} if kind == 'individual' else {'select', 'scene', 'snapshot', 'restore', 'allocation_check'}
++        if body.command not in allowed:
++            raise HTTPException(422, 'Unsupported native simulation operation')
++        service = simulation_service(kind)
++        try:
++            from .lab_simulation import execute
++            return execute(kind, service, body.command, body.arguments)
++        except Exception as error:
++            raise HTTPException(409, str(error)) from error
+diff --git a/explorer4/lab_collection.py b/explorer4/lab_collection.py
+new file mode 100644
+index 0000000..788899e
+--- /dev/null
++++ b/explorer4/lab_collection.py
+@@ -0,0 +1,65 @@
++"""Narrow access to native collection setup and completed quality receipts."""
++import json
++import re
++import threading
++from fastapi import HTTPException
++from pydantic import BaseModel, ConfigDict, Field
++from . import catalog, collection
++
++_setup_lock = threading.RLock()
++
++
++class Setup(BaseModel):
++    model_config = ConfigDict(extra='forbid')
++    task: str
++    profile: str
++    binding: str = Field(pattern=r'^[a-z0-9_-]{4,100}$')
++    instruction: str = Field(min_length=1, max_length=200)
++
++
++def prepare(body):
++    marker = 'Homebrain Lab development / '+body.binding
++    with _setup_lock:
++        series = collection.series(body.task)
++        matches = [row for row in series if row['description'] == marker and row['operator'] == 'Homebrain Lab']
++        if len(matches) > 1:
++            raise ValueError('Ambiguous native station binding; inspect its existing series')
++        if matches:
++            return matches[0]
++        profile = series[0]['profile'] if series else body.profile
++        return collection.create_series(body.task, profile, 'Homebrain Lab', marker, instruction=body.instruction)
++
++
++def quality(identifier):
++    if not re.fullmatch(r'[A-Za-z0-9_-]{1,120}', identifier):
++        raise ValueError('Invalid native episode identity')
++    collection.initialize()
++    with catalog.connect() as db:
++        row = db.execute('SELECT * FROM collection_attempts WHERE episode=?', (identifier,)).fetchone()
++    if row is None:
++        return {'episode_id': identifier, 'state': 'unmanaged', 'quality': None}
++    result = dict(row)
++    result['quality'] = json.loads(result['quality']) if result.get('quality') else None
++    return {'episode_id': identifier, 'state': result['phase'], 'attempt': result, 'quality': result['quality']}
++
++
++def install(app):
++    @app.get('/api/lab/rosmaster/status')
++    def rosmaster_status():
++        from .rosmaster_console import operator, recorder
++        return {'recording': {**recorder.status(), 'thread_active': recorder.active()},
++                'owner': operator.owner, 'armed': bool(operator.lease), 'generation': operator.generation}
++
++    @app.post('/api/lab/collections/prepare')
++    def setup(body: Setup):
++        try:
++            return prepare(body)
++        except ValueError as error:
++            raise HTTPException(409, str(error)) from error
++
++    @app.get('/api/lab/quality/{identifier}')
++    def read_quality(identifier: str):
++        try:
++            return quality(identifier)
++        except ValueError as error:
++            raise HTTPException(422, str(error)) from error
+diff --git a/explorer4/lab_observation.py b/explorer4/lab_observation.py
+new file mode 100644
+index 0000000..baaf65c
+--- /dev/null
++++ b/explorer4/lab_observation.py
+@@ -0,0 +1,45 @@
++"""Read-only native frames, with original source clock and conservative age."""
++import json
++import time
++from fastapi import HTTPException
++from fastapi.responses import Response
++
++
++def response(result, robot, elapsed_ms):
++    result.raise_for_status()
++    camera = json.loads(result.headers['X-Explorer-Camera'])
++    observation = json.loads(result.headers['X-Explorer-Observation'])
++    now, received = observation.get('monotonic_ns'), camera.get('received_ns')
++    if not isinstance(now,int) or not isinstance(received,int) or received>now:
++        raise ValueError('No verified native source timestamp')
++    age = (now-received)/1e6+elapsed_ms
++    if age>500 or camera.get('available') is False:
++        raise ValueError('Native '+robot+' camera is stale')
++    return Response(result.content,media_type='image/jpeg',headers={
++        'Cache-Control':'no-store','X-Frame-Age-Ms':str(age),'X-Frame-Robot':robot,
++        'X-Frame-Sequence':str(camera.get('sequence','unknown')),
++        'X-Frame-Clock':camera.get('source_clock','native_agent_monotonic'),
++        'X-Frame-Metadata':json.dumps(camera)})
++
++
++def install(app):
++    @app.get('/api/lab/tank/frame.jpg')
++    def tank():
++        from .tank import client
++        try:
++            started=time.monotonic()
++            with client() as connection:
++                result=connection.get('/frame.jpg',timeout=1)
++            return response(result,'tank',(time.monotonic()-started)*1000)
++        except Exception as error:
++            raise HTTPException(503,'No fresh authorized Tank frame: '+str(error)) from error
++
++    @app.get('/api/lab/rosmaster/frame.jpg')
++    async def rosmaster():
++        from .rosmaster_monitor import fetch
++        try:
++            started=time.monotonic()
++            result=await fetch('/frame.jpg')
++            return response(result,'rosmaster',(time.monotonic()-started)*1000)
++        except Exception as error:
++            raise HTTPException(503,'No fresh authorized ROSMASTER frame: '+str(error)) from error
+diff --git a/explorer4/lab_simulation.py b/explorer4/lab_simulation.py
+new file mode 100644
+index 0000000..979e8ae
+--- /dev/null
++++ b/explorer4/lab_simulation.py
+@@ -0,0 +1,42 @@
++"""Respect existing compute reservations around Homebrain-started simulators."""
++from contextlib import ExitStack
++from .resources import ResourceLease, ExistingTrainingLease
++
++_reservations = {}
++
++
++def execute(kind, service, command, arguments):
++    if command == 'start':
++        return start(kind, service)
++    if command == 'close':
++        return close(kind, service, arguments.get('operator'))
++    return service.request(command, **arguments)
++
++
++def start(kind, service):
++    try:
++        return service.request()
++    except (OSError, RuntimeError):
++        reservation = ExitStack()
++        try:
++            reservation.enter_context(ResourceLease('compute'))
++            reservation.enter_context(ExistingTrainingLease())
++            result = service.start()
++            _reservations[kind] = reservation
++            return result
++        except Exception:
++            reservation.close()
++            raise
++
++
++def close(kind, service, owner):
++    state = service.request()
++    if state.get('recording') or state.get('finalizing'):
++        raise ValueError('Finish the native simulated writer before closing')
++    if state.get('owner') not in (None, owner):
++        raise PermissionError('Another operator owns this simulator')
++    if kind not in _reservations or service.process is None:
++        raise PermissionError('This adapter did not start the simulator; retain its original owner')
++    service.shutdown()
++    _reservations.pop(kind).close()
++    return {'closed': True, 'domain': 'simulation'}
+diff --git a/explorer4/rosmaster_console.py b/explorer4/rosmaster_console.py
+index 9d01734..d38d480 100644
+--- a/explorer4/rosmaster_console.py
++++ b/explorer4/rosmaster_console.py
+@@ -186,10 +186,17 @@ def telemetry(health,mode,notice):
+         'log':(s.get('logs',[])+([operator.error] if operator.error else [])+([notice] if notice else []))[-14:]}
+ 
+ 
++LAB_ACKS={}
++
+ def log_action(owner,action,value,error):
+     """Every panel action and its result, so failures seen only in a browser are diagnosable."""
++    nonce=value.get('homebrain_request')
++    if isinstance(nonce,str) and len(nonce)==32 and all(character in '0123456789abcdef' for character in nonce):
++        LAB_ACKS[nonce]={'operation_id':nonce,'action':action,'status':'rejected' if error else 'accepted',
++                         'error':str(error) if error else None,'recording':recorder.status(),'at':time.time()}
++        if len(LAB_ACKS)>512:LAB_ACKS.pop(next(iter(LAB_ACKS)))
+     try:
+-        path=DATA/'logs/rosmaster-panel-actions.jsonl';path.parent.mkdir(parents=True,exist_ok=True)
++        path=DATA/'logs/rosmaster-panel-actions.jsonl' ;path.parent.mkdir(parents=True,exist_ok=True)
+         record={'at':time.time(),'tab':owner[:8],'action':action,'error':f'{type(error).__name__}: {error}' if error else None,
+                 'value':{k:v for k,v in value.items() if k in ('profile','mode','on','joint','which','outcome','plan','study')}}
+         with path.open('a') as output:output.write(json.dumps(record,ensure_ascii=False)+'\n')
+diff --git a/tests/test_lab_api.py b/tests/test_lab_api.py
+new file mode 100644
+index 0000000..ea45e3a
+--- /dev/null
++++ b/tests/test_lab_api.py
+@@ -0,0 +1,124 @@
++import asyncio
++import json
++import threading
++import time
++from types import SimpleNamespace
++import pytest
++from fastapi import WebSocketDisconnect
++from explorer4.lab_api import Bridge, Start, public_sample
++
++
++class Control:
++    def __init__(self):
++        self.owner = None
++        self.generation = 0
++        self.robot = 'tank'
++        self.session = 'native-session'
++        self.last_stop_reason = None
++        self.lock = threading.RLock()
++        self.cleared = False
++
++    def stop(self, reason):
++        self.generation += 1
++        self.owner = None
++        self.last_stop_reason = reason
++
++    def clear_base_inputs(self):
++        self.cleared = True
++
++    def heartbeat(self, owner):
++        self.last_heartbeat = owner
++
++
++class Session:
++    def __init__(self, control):
++        self.control = control
++        self.thread = None
++        self.latest = None
++        self.phase = 'idle'
++        self.record_requested = False
++        self.frame_count = 0
++        self.last_episode_id = 'old-episode'
++        self.error = None
++        self.started = False
++
++    def start(self, owner, profile, scene, **kwargs):
++        self.started = True
++        self.control.owner = owner
++
++    def finish(self, outcome, reason):
++        self.outcome = outcome
++        self.control.stop(reason)
++
++
++def test_stale_generation_and_missing_focused_browser_reject_start():
++    control = Control()
++    session = Session(control)
++    bridge = Bridge(control, session)
++    body = Start(owner='focused-browser', profile='tank_dock', scene='fixture', expected_generation=0)
++    with pytest.raises(PermissionError):
++        asyncio.run(bridge.start(body))
++    bridge.connections[body.owner] = time.monotonic()
++    control.stop('independent STOP')
++    with pytest.raises(ValueError):
++        asyncio.run(bridge.start(body))
++    assert not session.started
++
++
++def test_stop_during_manual_handover_fences_record_start():
++    control = Control()
++    session = Session(control)
++    control.owner = 'focused-browser'
++    class Thread:
++        def is_alive(self):
++            return True
++        def join(self, timeout):
++            control.stop('STOP during handover')
++    session.thread = Thread()
++    bridge = Bridge(control, session)
++    bridge.connections[control.owner] = time.monotonic()
++    body = Start(owner=control.owner, profile='tank_dock', scene='fixture', expected_generation=0)
++    with pytest.raises(PermissionError):
++        asyncio.run(bridge.start(body))
++    assert not session.started
++
++
++def test_public_sample_never_serializes_raw_pixels():
++    sample = {'images': {'front': {'image': object(), 'sequence': 7, 'reused': True}}, 'state_valid': False}
++    public = public_sample(sample)
++    assert public['images']['front'] == {'sequence':7, 'reused':True}
++    assert json.loads(json.dumps(public))['state_valid'] is False
++
++
++def test_independent_keys_keep_separate_native_sources():
++    control = Control()
++    calls = []
++    control.base_key = lambda *args: calls.append(args)
++    bridge = Bridge(control, Session(control))
++    bridge.connections['focused-browser'] = time.monotonic()
++    async def packets():
++        await bridge.packet('focused-browser', {'kind':'key','key':'up','pressed':True,'source':'KeyW'})
++        await bridge.packet('focused-browser', {'kind':'key','key':'left','pressed':True,'source':'KeyA'})
++    asyncio.run(packets())
++    assert [call[-1] for call in calls] == ['homebrain:KeyW','homebrain:KeyA']
++
++
++def test_chat_focus_clears_inputs_without_finishing_writer():
++    control = Control()
++    control.owner = 'focused-browser'
++    session = Session(control)
++    bridge = Bridge(control, session)
++    asyncio.run(bridge.packet(control.owner, {'kind':'clear_inputs'}))
++    assert control.cleared and not hasattr(session, 'outcome')
++
++
++def test_frame_age_is_source_clock_plus_round_trip():
++    import httpx
++    from explorer4.lab_observation import response
++    packet = httpx.Response(200,content=b'jpeg',request=httpx.Request('GET','http://fixture/frame'),headers={
++        'X-Explorer-Camera':json.dumps({'received_ns':1_000_000,'sequence':7}),
++        'X-Explorer-Observation':json.dumps({'monotonic_ns':2_000_000})})
++    accepted = response(packet,'tank',10)
++    assert accepted.headers['X-Frame-Age-Ms'] == '11.0'
++    with pytest.raises(ValueError):
++        response(packet,'tank',600)

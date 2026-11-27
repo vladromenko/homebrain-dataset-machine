@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+homebrain_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd -- "$homebrain_root"
+exec "$homebrain_root/.venv/bin/python" -m homebrain.launcher_session "$@"

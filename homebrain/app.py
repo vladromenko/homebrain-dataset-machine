@@ -21,6 +21,12 @@ from .tools import Registry,ToolRequest
 from .events import Events
 from .readiness import readiness
 from .governor import Governor
+from .lab.service import Lab
+from .lab.api import router as lab_router
+from .native_adapters.control import Controls
+from .agent_runtime.runtime import Runtime
+from .agent_runtime.api import install as install_agents
+from .local_voice import LocalVoice
 
 config = load()
 runtime = Path(config["runtime"])
@@ -41,17 +47,26 @@ registry = Registry(adapters,store,vision)
 events = Events(store)
 media_lock = asyncio.Lock()
 governor = Governor(config,adapters["smart-swarm"],store)
+lab = Lab(config)
+lab.vision = vision
+governor.lab = lab
+lab.controls = Controls(lab)
+agent_runtime = Runtime(config,store,lab,TOKEN)
+agent_runtime.perception = supervisor.perception
+microphones.approved = set(store.state("microphone_approved",[]))
+local_voice = LocalVoice(audio,microphones,agent_runtime,store,media_lock)
+lab.memory_store = store
+lab.on_selection = lambda identifier: setattr(local_voice,"selection",identifier)
 
 
 def index_sources():
-    for adapter in adapters.values():
-        docs = adapter.spec.get("docs")
-        paths = list(Path(docs).glob("*.md")) if docs else []
-        source = adapter.spec.get("source")
-        paths += sorted(Path(source).glob("*.py"))[:100] if source else []
-        for path in paths:
-            approved(path,adapter.spec["approved_roots"])
-            store.index(path,source_revision(path,adapter.spec))
+    from .indexing import index_root
+    roots = {str(ROOT)} | {root for adapter in adapters.values() for root in adapter.spec['approved_roots']}
+    peer = lab.swarm.registration()
+    if peer:
+        roots.add(peer['repository_path'])
+    for root in roots:
+        index_root(store,Path(root))
 
 
 def source_revision(path, spec):
@@ -69,21 +84,35 @@ def source_revision(path, spec):
 
 @asynccontextmanager
 async def lifespan(app):
-    await asyncio.to_thread(index_sources)
-    from .semantic import Encoder,Hybrid
-    if (Path(config["work"])/"models/embedding/model_quantized.onnx").exists():
-        hybrid = Hybrid(store,Encoder(Path(config["work"])/"models/embedding"))
-        semantic_task = asyncio.create_task(build_semantics(hybrid))
+    indexing = asyncio.create_task(index_when_idle())
     task = asyncio.create_task(vision.run())
     monitor = asyncio.create_task(monitor_events())
     resources = asyncio.create_task(governor.run())
+    lab_recovery = asyncio.create_task(lab.recover())
+    local_voice.restore()
     yield
+    local_voice.shutdown()
     vision.enabled = False
     task.cancel()
     monitor.cancel()
     resources.cancel()
+    indexing.cancel()
+    lab_recovery.cancel()
+    await lab.swarm.close()
     audio.stop_capture()
     vision.close()
+
+
+async def index_when_idle():
+    from .lab.workload import inspect
+    while True:
+        try:
+            load = await inspect(lab)
+            if load['profile'] == 'Idle' and load['inference_permitted'] and not agent_runtime.queue.locked():
+                await asyncio.to_thread(index_sources)
+        except (OSError, ValueError) as error:
+            store.audit('index_deferred', {'reason': str(error)})
+        await asyncio.sleep(60)
 
 
 async def build_semantics(hybrid):
@@ -104,9 +133,16 @@ async def monitor_events():
             if status["state"] != "Ready":
                 events.emit("camera_missing","The overview camera is unavailable. Visual guidance is suspended.",1)
             if previous is not None and revision!=previous:
-                events.emit("viewpoint_changed","The camera viewpoint has changed. I am checking the workspace again.",1)
+                from .memory_context import invalidate_device
+                invalidate_device(store,config['camera_id'],'Camera viewpoint changed')
+                lab.journal.profile('camera_geometry',{'requires_recheck':True,'revision':revision})
+                guidance = 'The C920 viewpoint changed. '+status['scene'].get('guidance','Keep the pickup, release and fixed reference areas fully visible, then recheck the workspace.')
+                events.emit('viewpoint_changed',guidance,1)
+                local_voice.announce(guidance)
             if status["scene"].get("quality",{}).get("dark"):
-                events.emit("dark_view",status["scene"]["guidance"],2,90)
+                alert = events.emit("dark_view",status["scene"]["guidance"],2,90)
+                if alert:
+                    local_voice.announce(alert['text'])
             if governor.latest:
                 native = governor.latest["live"].get("data",{})
                 recording = native.get("recording",{})
@@ -120,7 +156,7 @@ async def monitor_events():
         await asyncio.sleep(3)
 
 
-app = FastAPI(title="Homebrain AI",version="0.1.0",lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
+app = FastAPI(title="Homebrain Lab",version="0.2.0",lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
 
 
 @app.middleware("http")
@@ -128,17 +164,18 @@ async def guard(request, call_next):
     if request.url.hostname not in ("localhost","127.0.0.1","testserver"):
         return JSONResponse({"error":"Untrusted host"},403)
     origin = request.headers.get("origin")
-    if origin and origin != str(request.base_url).rstrip("/"):
+    handoff = request.url.path == "/api/launcher/handoff" and request.method == "POST"
+    if origin and origin != str(request.base_url).rstrip("/") and not (handoff and origin == "null"):
         return JSONResponse({"error":"Cross-origin request denied"},403)
     provided = request.headers.get("authorization","").removeprefix("Bearer ") or request.cookies.get("homebrain","")
-    public = request.url.path in ("/","/api/login") or request.url.path.startswith("/static/")
+    public = request.url.path in ("/","/lab","/api/login","/api/health","/api/launcher/handoff") or request.url.path.startswith(("/static/","/lab-assets/"))
     if not public and not secrets.compare_digest(provided,TOKEN):
         return JSONResponse({"error":"Authentication required"},401)
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' blob:; media-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'"
     return response
 
 
@@ -156,8 +193,10 @@ def login(body:Login):
 
 
 @app.get("/")
+@app.get("/lab")
 def index():
-    return FileResponse(ROOT/"homebrain/static/index.html")
+    built = ROOT/"homebrain/static/lab/index.html"
+    return FileResponse(built if built.exists() else ROOT/"homebrain/static/index.html")
 
 
 @app.get("/api/status")
@@ -184,7 +223,7 @@ async def chat(body:Chat):
     if body.project not in adapters:
         raise HTTPException(404,"Project unavailable")
     async def events():
-        async for event in supervisor.answer(body.text,body.session,body.project):
+        async for event in agent_runtime.answer(body.text,body.session,store.state('selected_session')):
             yield json.dumps(event)+"\n"
     return StreamingResponse(events(),media_type="application/x-ndjson")
 
@@ -244,12 +283,15 @@ def authorize_microphone(body:Permission):
         raise HTTPException(403,"Explicit listening permission is required")
     microphones.authorize(body.device)
     store.put("microphone_preferred",microphones.preferred)
+    store.put("microphone_approved",list(microphones.approved))
     store.audit("microphone_permission",{"device":body.device})
     return microphones.refresh()
 
 
 @app.post("/api/microphone/mute")
 def mute():
+    local_voice.configure(False)
+    store.put("microphone_approved",[])
     microphones.mute()
     audio.stop_capture()
     return {"state":"Muted"}
@@ -311,6 +353,10 @@ async def audio_task(function, *args):
             raise HTTPException(400,"Local speech could not process this audio") from error
 
 
+from .voice_benchmark import install as install_voice_benchmark
+install_voice_benchmark(app, capture_and_transcribe, audio_task, local_voice, microphones, store)
+
+
 @app.post("/api/transcribe")
 async def transcribe(request:Request):
     raw = await bounded_body(request,4_000_000)
@@ -356,13 +402,21 @@ class Memory(BaseModel):
     scope: str = Field(pattern=r"^(lab|project|session|preference|task|decision)$")
     text: str = Field(max_length=2000)
     confirmed: bool
+    project_id: str | None = None
+    device_id: str | None = None
+    supersedes: int | None = None
 
 
 @app.post("/api/memory")
 def remember(body:Memory):
     if not body.confirmed:
         raise HTTPException(403,"Confirm the memory write")
-    store.remember(body.scope,body.text,"operator-entered; unverified")
+    from .memory_context import attach, supersede
+    identifier = store.remember(body.scope,body.text,"operator-confirmed")
+    attach(store, identifier, project=body.project_id, device=body.device_id,
+           verification='operator_confirmed', confidence=1)
+    if body.supersedes is not None:
+        supersede(store, body.supersedes, identifier)
     return store.memories()
 
 
@@ -380,3 +434,8 @@ def export_memory():
 
 
 app.mount("/static",StaticFiles(directory=ROOT/"homebrain/static"),name="static")
+app.include_router(lab_router(lab,TOKEN))
+install_agents(app,agent_runtime,adapters)
+from .voice_api import install as install_voice
+install_voice(app,local_voice)
+app.mount("/lab-assets",StaticFiles(directory=ROOT/"homebrain/static/lab",check_dir=False),name="lab-assets")

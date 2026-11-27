@@ -1,0 +1,13 @@
+{
+  "descriptor_version": "homebrain.integration-owner.v1",
+  "contract_version": "homebrain.lab.v1",
+  "repository": "https://github.com/vladromenko/homebrain-dataset-machine",
+  "worktree": "/srv/homebrain-dataset-machine",
+  "commit": "0000000000000000000000000000000000000000",
+  "deployment_owner": "Homebrain Lab integration",
+  "deployment_status": "example_not_deployed",
+  "handover_dir": "/srv/homebrain-private/handover",
+  "launcher_descriptor": "/srv/homebrain-private/handover/homebrain-lab.json",
+  "smart_swarm_descriptor": "/srv/homebrain-private/handover/smart-swarm.json",
+  "contract_path": "/srv/homebrain-dataset-machine/contracts"
+}

@@ -1,0 +1,111 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "homebrain.lab.v1",
+      "default": "homebrain.lab.v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "robot_id": {
+      "title": "Robot Id",
+      "type": "string"
+    },
+    "display_name": {
+      "title": "Display Name",
+      "type": "string"
+    },
+    "domain": {
+      "enum": [
+        "physical",
+        "simulation"
+      ],
+      "title": "Domain",
+      "type": "string"
+    },
+    "native_owner": {
+      "title": "Native Owner",
+      "type": "string"
+    },
+    "inputs": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Inputs",
+      "type": "array"
+    },
+    "operations": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Operations",
+      "type": "array"
+    },
+    "cameras": {
+      "default": [],
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Cameras",
+      "type": "array"
+    },
+    "sensors": {
+      "default": [],
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Sensors",
+      "type": "array"
+    },
+    "recorders": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Recorders",
+      "type": "array"
+    },
+    "models": {
+      "default": [],
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Models",
+      "type": "array"
+    },
+    "state": {
+      "default": "unavailable",
+      "title": "State",
+      "type": "string"
+    },
+    "blockers": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Blockers",
+      "type": "array"
+    },
+    "unsupported": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Unsupported",
+      "type": "array"
+    }
+  },
+  "required": [
+    "robot_id",
+    "display_name",
+    "domain",
+    "native_owner"
+  ],
+  "title": "RobotCapability",
+  "type": "object"
+}

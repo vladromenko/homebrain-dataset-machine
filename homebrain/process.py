@@ -72,7 +72,7 @@ def main():
     else:
         (Path(config["runtime"])/"model-disabled").unlink(missing_ok=True)
         args = model_args(config)
-        if Path(args[0]).exists():
+        if config.get("manage_models",True) and Path(args[0]).exists():
             start("model",["nice","-n","15"]+args,config)
         else:
             print("Model runtime is still building; grounded project tools are available.")

@@ -9,6 +9,6 @@ ROOT = Path(__file__).resolve().parents[1]
 def load():
     path = Path(os.environ.get("HOMEBRAIN_CONFIG", ROOT / "config.local.json"))
     config = json.loads(path.read_text())
-    config["runtime"] = str(ROOT / "runtime")
+    config.setdefault("runtime",str(ROOT / "runtime"))
     Path(config["runtime"]).mkdir(mode=0o700, exist_ok=True)
     return config

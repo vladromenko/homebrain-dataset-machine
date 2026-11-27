@@ -60,3 +60,17 @@ def test_camera_disconnection_and_reconnection(monkeypatch):
     monkeypatch.setattr(vision,"shared",shared)
     asyncio.run(vision.run())
     assert len(attempts)==2 and vision.status()["state"]=="Ready"
+
+
+def test_configured_native_owner_is_not_replaced_during_service_gap(monkeypatch):
+    vision = Vision({'camera_id':'fixture', 'camera_fps':2, 'camera_shared_url':'http://native/frame'})
+    attempts = []
+    async def unavailable():
+        attempts.append('shared')
+        vision.enabled = False
+        raise OSError('Native owner restarting')
+    monkeypatch.setattr('homebrain.vision.owners', lambda device: [])
+    monkeypatch.setattr(vision, 'shared', unavailable)
+    monkeypatch.setattr(vision, 'direct', lambda: pytest.fail('Must never acquire native camera'))
+    asyncio.run(vision.run())
+    assert attempts == ['shared'] and vision.capture is None
